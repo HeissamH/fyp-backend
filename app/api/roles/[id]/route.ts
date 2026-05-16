@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
-import { roles, rolePermissions, users } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { roles, rolePermissions, userRoles } from "@/lib/db/schema";
+import { eq, and, isNull } from "drizzle-orm";
 import { authenticateRequest, checkPermission } from "@/lib/auth/middleware";
 import { successResponse, errorResponse } from "@/lib/utils/api-response";
 import { updateRoleSchema } from "@/lib/validators/roles";
@@ -12,7 +12,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const auth = await authenticateRequest(req);
     if (auth.error || !auth.user) return errorResponse(auth.error || "Unauthorized", auth.status || 401);
     
-    const hasPerm = await checkPermission(auth.user.roleId, "role.read");
+    const hasPerm = await checkPermission(auth.user.roleIds, "role.read");
     if (!hasPerm) return errorResponse("Forbidden", 403);
     
     const resolvedParams = await params;
@@ -42,7 +42,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const auth = await authenticateRequest(req);
     if (auth.error || !auth.user) return errorResponse(auth.error || "Unauthorized", auth.status || 401);
     
-    const hasPerm = await checkPermission(auth.user.roleId, "role.update");
+    const hasPerm = await checkPermission(auth.user.roleIds, "role.update");
     if (!hasPerm) return errorResponse("Forbidden", 403);
 
     const resolvedParams = await params;
@@ -93,14 +93,18 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     const auth = await authenticateRequest(req);
     if (auth.error || !auth.user) return errorResponse(auth.error || "Unauthorized", auth.status || 401);
     
-    const hasPerm = await checkPermission(auth.user.roleId, "role.delete");
+    const hasPerm = await checkPermission(auth.user.roleIds, "role.delete");
     if (!hasPerm) return errorResponse("Forbidden", 403);
 
     const resolvedParams = await params;
     const roleId = resolvedParams.id;
 
     // Check if role is used by users
-    const usersCount = await db.select({ id: users.id }).from(users).where(eq(users.roleId, roleId)).limit(1);
+    const usersCount = await db
+      .select({ id: userRoles.id })
+      .from(userRoles)
+      .where(and(eq(userRoles.roleId, roleId), isNull(userRoles.revokedAt)))
+      .limit(1);
     if (usersCount.length > 0) {
       return errorResponse("Cannot delete role. It is currently assigned to one or more users.", 400);
     }

@@ -19,8 +19,6 @@ tags:
     description: Colleges and degree programmes
   - name: Academic years
     description: Academic year configuration
-  - name: Assignments
-    description: Lecturer and class representative assignments
   - name: Media
     description: File uploads (images, PDF, video)
   - name: Categories
@@ -60,11 +58,16 @@ components:
           type: string
         email:
           type: string
-        roleId:
-          type: string
-          format: uuid
-        roleName:
-          type: string
+        roles:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              name:
+                type: string
     SuccessResponse:
       type: object
       properties:
@@ -247,8 +250,9 @@ paths:
                     id: a1111111-1111-4111-8111-111111111111
                     fullName: Jane Student
                     email: jane@student.udsm.ac.tz
-                    roleId: a5555555-5555-4555-8555-555555555555
-                    roleName: STUDENT
+                    roles:
+                      - id: a5555555-5555-4555-8555-555555555555
+                        name: student
         "401":
           description: Invalid credentials
           content:
@@ -423,6 +427,12 @@ paths:
           name: search
           schema:
             type: string
+        - in: query
+          name: roleId
+          schema:
+            type: string
+            format: uuid
+          description: Filter users with this active role
       responses:
         "200":
           description: Paginated response of users
@@ -493,14 +503,10 @@ paths:
               properties:
                 fullName:
                   type: string
-                roleId:
-                  type: string
-                  format: uuid
                 isActive:
                   type: boolean
             example:
               fullName: Jane Student Updated
-              roleId: a5555555-5555-4555-8555-555555555555
               isActive: true
       responses:
         "200":
@@ -535,6 +541,77 @@ paths:
                 success: true
                 message: User deleted successfully
                 data: {}
+      tags:
+        - Users
+  /users/{id}/roles:
+    post:
+      summary: Assign a role to user (requires user.update)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - roleId
+              properties:
+                roleId:
+                  type: string
+                  format: uuid
+      responses:
+        "201":
+          description: Role assigned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      tags:
+        - Users
+    delete:
+      summary: Revoke a role from user (cannot remove last role)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - roleId
+              properties:
+                roleId:
+                  type: string
+                  format: uuid
+      responses:
+        "200":
+          description: Role revoked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
       tags:
         - Users
   /audit-logs:
@@ -1215,204 +1292,6 @@ paths:
                 data: {}
       tags:
         - Academic years
-  /lecturer-assignments:
-    get:
-      summary: List lecturer assignments (admin)
-      security:
-        - bearerAuth: []
-      responses:
-        "200":
-          description: Paginated list with user/programme/year joins
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SuccessResponse"
-              example:
-                success: true
-                message: Success
-                data:
-                  - id: a1111111-1111-4111-8111-111111111111
-                    fullName: Jane Student
-                meta:
-                  total: 42
-                  page: 1
-                  pageSize: 20
-                  totalPages: 3
-      tags:
-        - Assignments
-    post:
-      summary: Assign a lecturer to a class (admin)
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - lecturerId
-                - programmeId
-                - yearOfStudy
-                - semester
-                - subjectName
-                - academicYearId
-              properties:
-                lecturerId:
-                  type: string
-                  format: uuid
-                programmeId:
-                  type: string
-                  format: uuid
-                yearOfStudy:
-                  type: integer
-                semester:
-                  type: integer
-                subjectName:
-                  type: string
-                academicYearId:
-                  type: string
-                  format: uuid
-            example:
-              lecturerId: a1111111-1111-4111-8111-111111111111
-              programmeId: a3333333-3333-4333-8333-333333333333
-              yearOfStudy: 2
-              semester: 1
-              subjectName: Data Structures
-              academicYearId: a7777777-7777-4777-8777-777777777777
-      responses:
-        "201":
-          description: Lecturer assigned
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SuccessResponse"
-              example:
-                success: true
-                message: Lecturer assigned
-                data: {}
-      tags:
-        - Assignments
-  /lecturer-assignments/{id}:
-    delete:
-      summary: Remove a lecturer assignment (admin)
-      security:
-        - bearerAuth: []
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        "200":
-          description: Assignment removed
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SuccessResponse"
-              example:
-                success: true
-                message: Assignment removed
-                data: {}
-      tags:
-        - Assignments
-  /cr-assignments:
-    get:
-      summary: List CR assignments (admin)
-      security:
-        - bearerAuth: []
-      responses:
-        "200":
-          description: Paginated list with user/programme/year joins
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SuccessResponse"
-              example:
-                success: true
-                message: Success
-                data:
-                  - id: a1111111-1111-4111-8111-111111111111
-                    fullName: Jane Student
-                meta:
-                  total: 42
-                  page: 1
-                  pageSize: 20
-                  totalPages: 3
-      tags:
-        - Assignments
-    post:
-      summary: Assign a class representative (admin, max 2 per class)
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - userId
-                - programmeId
-                - yearOfStudy
-                - academicYearId
-              properties:
-                userId:
-                  type: string
-                  format: uuid
-                programmeId:
-                  type: string
-                  format: uuid
-                yearOfStudy:
-                  type: integer
-                academicYearId:
-                  type: string
-                  format: uuid
-            example:
-              userId: a1111111-1111-4111-8111-111111111111
-              programmeId: a3333333-3333-4333-8333-333333333333
-              yearOfStudy: 2
-              academicYearId: a7777777-7777-4777-8777-777777777777
-      responses:
-        "201":
-          description: CR assigned
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SuccessResponse"
-              example:
-                success: true
-                message: CR assigned
-                data: {}
-      tags:
-        - Assignments
-  /cr-assignments/{id}:
-    delete:
-      summary: Remove a CR assignment (admin)
-      security:
-        - bearerAuth: []
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        "200":
-          description: CR assignment removed
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SuccessResponse"
-              example:
-                success: true
-                message: CR assignment removed
-                data: {}
-      tags:
-        - Assignments
   /auth/change-email-request:
     post:
       summary: Request email change (sends OTP to new email)

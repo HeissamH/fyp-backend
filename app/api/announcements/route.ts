@@ -1,8 +1,14 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import {
-  announcements, announcementAudiences, announcementMedia,
-  users, roles, categories, media,
+  announcements,
+  announcementAudiences,
+  announcementMedia,
+  users,
+  roles,
+  categories,
+  media,
+  userRoles,
 } from "@/lib/db/schema";
 import { eq, and, or, isNull, desc, ilike, inArray, sql } from "drizzle-orm";
 import { withAuth, withPermission } from "@/lib/auth/middleware";
@@ -23,60 +29,55 @@ export const GET = withAuth(async (req, ctx) => {
 
   const userId = ctx.user.userId;
 
-  // Fetch user profile for audience matching
-  const [userProfile] = await db.select({
-    roleId: users.roleId,
-    roleName: roles.name,
-    collegeId: users.collegeId,
-    programmeId: users.programmeId,
-    yearOfStudy: users.yearOfStudy,
-  }).from(users)
-    .leftJoin(roles, eq(users.roleId, roles.id))
+  const [userBasic] = await db
+    .select({
+      collegeId: users.collegeId,
+      programmeId: users.programmeId,
+      yearOfStudy: users.yearOfStudy,
+    })
+    .from(users)
     .where(eq(users.id, userId));
 
-  if (!userProfile) return errorResponse("User not found", 404);
+  if (!userBasic) return errorResponse("User not found", 404);
 
-  const isAdminOrStaff = userProfile.roleName === "admin" || userProfile.roleName === "staff";
+  const rolesForUser = await db
+    .select({ name: roles.name })
+    .from(userRoles)
+    .innerJoin(roles, eq(userRoles.roleId, roles.id))
+    .where(and(eq(userRoles.userId, userId), isNull(userRoles.revokedAt)));
 
-  // Build WHERE conditions
+  const roleNames = rolesForUser.map((r) => r.name);
+  const userProfile = { ...userBasic, roleNames };
+
+  const isAdminOrStaff = roleNames.includes("admin") || roleNames.includes("staff");
+
   const conditions = [isNull(announcements.deletedAt)];
 
-  // Non-admin/staff: apply audience filtering
   if (!isAdminOrStaff) {
     conditions.push(eq(announcements.status, "PUBLISHED"));
 
-    // Build audience-matching subquery
     const audienceConditions = [];
 
     if (isForYou) {
-      // Strict class-only feed
       if (userProfile.programmeId && userProfile.yearOfStudy) {
         audienceConditions.push(
           and(
             eq(announcementAudiences.targetType, "PROGRAMME_YEAR"),
             eq(announcementAudiences.programmeId, userProfile.programmeId),
             eq(announcementAudiences.yearOfStudy, userProfile.yearOfStudy),
-          )
+          ),
         );
       }
     } else {
-      audienceConditions.push(
-        eq(announcementAudiences.targetType, "ALL"),
-      );
+      audienceConditions.push(eq(announcementAudiences.targetType, "ALL"));
       if (userProfile.collegeId) {
         audienceConditions.push(
-          and(
-            eq(announcementAudiences.targetType, "COLLEGE"),
-            eq(announcementAudiences.collegeId, userProfile.collegeId),
-          )
+          and(eq(announcementAudiences.targetType, "COLLEGE"), eq(announcementAudiences.collegeId, userProfile.collegeId)),
         );
       }
       if (userProfile.programmeId) {
         audienceConditions.push(
-          and(
-            eq(announcementAudiences.targetType, "PROGRAMME"),
-            eq(announcementAudiences.programmeId, userProfile.programmeId),
-          )
+          and(eq(announcementAudiences.targetType, "PROGRAMME"), eq(announcementAudiences.programmeId, userProfile.programmeId)),
         );
         if (userProfile.yearOfStudy) {
           audienceConditions.push(
@@ -84,23 +85,21 @@ export const GET = withAuth(async (req, ctx) => {
               eq(announcementAudiences.targetType, "PROGRAMME_YEAR"),
               eq(announcementAudiences.programmeId, userProfile.programmeId),
               eq(announcementAudiences.yearOfStudy, userProfile.yearOfStudy),
-            )
+            ),
           );
         }
       }
-      audienceConditions.push(
-        and(
-          eq(announcementAudiences.targetType, "ROLE"),
-          eq(announcementAudiences.roleTarget, userProfile.roleName || ""),
-        )
-      );
+      if (roleNames.length > 0) {
+        audienceConditions.push(and(eq(announcementAudiences.targetType, "ROLE"), inArray(announcementAudiences.roleTarget, roleNames)));
+      }
     }
 
     if (audienceConditions.length === 0) {
       return paginatedResponse([], 0, page, pageSize);
     }
 
-    const matchingAnnouncementIds = db.select({ id: announcementAudiences.announcementId })
+    const matchingAnnouncementIds = db
+      .select({ id: announcementAudiences.announcementId })
       .from(announcementAudiences)
       .where(or(...audienceConditions));
 
@@ -113,41 +112,41 @@ export const GET = withAuth(async (req, ctx) => {
 
   const whereClause = and(...conditions);
 
-  // Count
-  const totalResult = await db.select({ count: sql<number>`count(*)` })
+  const totalResult = await db
+    .select({ count: sql<number>`count(*)` })
     .from(announcements)
     .where(whereClause);
   const total = Number(totalResult[0].count);
 
-  // Fetch feed
-  const list = await db.select({
-    id: announcements.id,
-    title: announcements.title,
-    slug: announcements.slug,
-    excerpt: announcements.excerpt,
-    type: announcements.type,
-    status: announcements.status,
-    isPinned: announcements.isPinned,
-    viewCount: announcements.viewCount,
-    publishedAt: announcements.publishedAt,
-    createdAt: announcements.createdAt,
-    authorId: users.id,
-    authorName: users.fullName,
-    categoryId: categories.id,
-    categoryName: categories.name,
-    coverImageId: media.id,
-    coverImageUrl: media.url,
-  })
-  .from(announcements)
-  .leftJoin(users, eq(announcements.authorId, users.id))
-  .leftJoin(categories, eq(announcements.categoryId, categories.id))
-  .leftJoin(media, eq(announcements.coverImageId, media.id))
-  .where(whereClause)
-  .orderBy(desc(announcements.isPinned), desc(announcements.publishedAt), desc(announcements.createdAt))
-  .limit(pageSize).offset(offset);
+  const list = await db
+    .select({
+      id: announcements.id,
+      title: announcements.title,
+      slug: announcements.slug,
+      excerpt: announcements.excerpt,
+      type: announcements.type,
+      status: announcements.status,
+      isPinned: announcements.isPinned,
+      viewCount: announcements.viewCount,
+      publishedAt: announcements.publishedAt,
+      createdAt: announcements.createdAt,
+      authorId: users.id,
+      authorName: users.fullName,
+      categoryId: categories.id,
+      categoryName: categories.name,
+      coverImageId: media.id,
+      coverImageUrl: media.url,
+    })
+    .from(announcements)
+    .leftJoin(users, eq(announcements.authorId, users.id))
+    .leftJoin(categories, eq(announcements.categoryId, categories.id))
+    .leftJoin(media, eq(announcements.coverImageId, media.id))
+    .where(whereClause)
+    .orderBy(desc(announcements.isPinned), desc(announcements.publishedAt), desc(announcements.createdAt))
+    .limit(pageSize)
+    .offset(offset);
 
-  // Map to clean response shape
-  const data = list.map(a => ({
+  const data = list.map((a) => ({
     id: a.id,
     title: a.title,
     slug: a.slug,
@@ -174,31 +173,35 @@ export const POST = withPermission(async (req, ctx) => {
   const d = validation.data;
   const slug = generateSlug(d.title);
 
-  // Check unique slug
-  const existing = await db.select({ id: announcements.id })
-    .from(announcements).where(eq(announcements.slug, slug)).limit(1);
+  const existing = await db
+    .select({ id: announcements.id })
+    .from(announcements)
+    .where(eq(announcements.slug, slug))
+    .limit(1);
   if (existing.length > 0) return errorResponse("An announcement with a similar title already exists", 409);
 
   const isPublishing = d.status === "PUBLISHED";
   const publishedAt = isPublishing ? new Date() : null;
 
   const [created] = await db.transaction(async (tx) => {
-    const [ann] = await tx.insert(announcements).values({
-      title: d.title,
-      slug,
-      content: d.content,
-      excerpt: d.excerpt || null,
-      type: d.type,
-      status: d.status,
-      authorId: ctx.user.userId,
-      categoryId: d.categoryId || null,
-      coverImageId: d.coverImageId || null,
-      academicYearId: d.academicYearId || null,
-      publishedAt,
-    }).returning();
+    const [ann] = await tx
+      .insert(announcements)
+      .values({
+        title: d.title,
+        slug,
+        content: d.content,
+        excerpt: d.excerpt || null,
+        type: d.type,
+        status: d.status,
+        authorId: ctx.user.userId,
+        categoryId: d.categoryId || null,
+        coverImageId: d.coverImageId || null,
+        academicYearId: d.academicYearId || null,
+        publishedAt,
+      })
+      .returning();
 
-    // Insert audiences
-    const audienceRows = d.audiences.map(a => ({
+    const audienceRows = d.audiences.map((a) => ({
       announcementId: ann.id,
       targetType: a.targetType,
       collegeId: a.collegeId || null,
@@ -209,11 +212,8 @@ export const POST = withPermission(async (req, ctx) => {
     }));
     await tx.insert(announcementAudiences).values(audienceRows);
 
-    // Insert media links
     if (d.mediaIds && d.mediaIds.length > 0) {
-      await tx.insert(announcementMedia).values(
-        d.mediaIds.map(mId => ({ announcementId: ann.id, mediaId: mId }))
-      );
+      await tx.insert(announcementMedia).values(d.mediaIds.map((mId) => ({ announcementId: ann.id, mediaId: mId })));
     }
 
     return [ann];

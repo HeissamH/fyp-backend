@@ -2,7 +2,15 @@ diff --git a/bin.cjs b/bin.cjs
 index 07274ea6f53fd54a129b3d338892feda6e995cff..9cb57ac8bb9b59e471d07d854dcf4f2023650e84 100755
 --- a/bin.cjs
 +++ b/bin.cjs
-@@ -17856,8 +17856,11 @@ WHERE
+@@ -1463,6 +1463,7 @@
+           terminal.clear();
+           return result;
+         } catch (err2) {
++          console.error(err2);
+           terminal.reject(err2);
+           process.exit(1);
+         }
+@@ -17856,8 +17857,11 @@
                progressCallback("checks", checksCount, "fetching");
              }
              for (const checks of tableChecks) {

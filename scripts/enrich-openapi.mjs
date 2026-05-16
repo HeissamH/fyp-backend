@@ -54,8 +54,13 @@ const REQUEST_EXAMPLES = {
   },
   "PUT /users/{id}": {
     fullName: "Jane Student Updated",
-    roleId: UID.role,
     isActive: true,
+  },
+  "POST /users/{id}/roles": {
+    roleId: UID.role,
+  },
+  "DELETE /users/{id}/roles": {
+    roleId: UID.role,
   },
   "POST /roles": {
     name: "custom_analyst",
@@ -83,20 +88,6 @@ const REQUEST_EXAMPLES = {
     label: "2025/2026",
     startDate: "2025-10-01",
     endDate: "2026-07-31",
-  },
-  "POST /lecturer-assignments": {
-    lecturerId: UID.user,
-    programmeId: UID.programme,
-    yearOfStudy: 2,
-    semester: 1,
-    subjectName: "Data Structures",
-    academicYearId: UID.ay,
-  },
-  "POST /cr-assignments": {
-    userId: UID.user,
-    programmeId: UID.programme,
-    yearOfStudy: 2,
-    academicYearId: UID.ay,
   },
   "POST /categories": { name: "Exams", module: "ANNOUNCEMENT" },
   "POST /event-categories": { name: "Workshop", iconName: "calendar" },
@@ -175,7 +166,6 @@ const TAG_DESCRIPTIONS = {
   "RBAC & Audit": "Roles, permissions, and audit log",
   "Colleges & Programmes": "Colleges and degree programmes",
   "Academic years": "Academic year configuration",
-  Assignments: "Lecturer and class representative assignments",
   Media: "File uploads (images, PDF, video)",
   Categories: "Content categories for announcements, events, and feedback",
   Announcements: "Announcements, comments, and reactions",
@@ -194,7 +184,6 @@ const TAG_ORDER = [
   "RBAC & Audit",
   "Colleges & Programmes",
   "Academic years",
-  "Assignments",
   "Media",
   "Categories",
   "Announcements",
@@ -213,8 +202,6 @@ const PAGINATED_GET_PATHS = new Set([
   "/programmes",
   "/academic-years",
   "/audit-logs",
-  "/lecturer-assignments",
-  "/cr-assignments",
   "/announcements",
   "/events",
   "/lost-found",
@@ -322,7 +309,6 @@ function tagForPath(p) {
   if (p.startsWith("/colleges") || p.startsWith("/departments") || p.startsWith("/programmes"))
     return ["Colleges & Programmes"];
   if (p.startsWith("/academic-years")) return ["Academic years"];
-  if (p.startsWith("/lecturer-assignments") || p.startsWith("/cr-assignments")) return ["Assignments"];
   if (p.startsWith("/media/")) return ["Media"];
   if (p.startsWith("/categories") || p.startsWith("/event-categories")) return ["Categories"];
   if (p.startsWith("/announcements")) return ["Announcements"];
@@ -406,8 +392,7 @@ for (const [pathKey, item] of Object.entries(doc.paths)) {
               id: UID.user,
               fullName: "Jane Student",
               email: "jane@student.udsm.ac.tz",
-              roleId: UID.role,
-              roleName: "STUDENT",
+              roles: [{ id: UID.role, name: "student" }],
             },
           },
         };
@@ -422,6 +407,7 @@ for (const [pathKey, item] of Object.entries(doc.paths)) {
           id: UID.user,
           fullName: "Jane Student",
           email: "jane@student.udsm.ac.tz",
+          roles: [{ id: UID.role, name: "student" }],
         },
       };
     }

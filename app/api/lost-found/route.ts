@@ -1,21 +1,13 @@
-import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { lostFoundItems, lostFoundMedia, users, categories, roles, media } from "@/lib/db/schema";
 import { eq, and, isNull, desc, sql, inArray } from "drizzle-orm";
 import { withAuth } from "@/lib/auth/middleware";
-import { successResponse, errorResponse, paginatedResponse } from "@/lib/utils/api-response";
+import { successResponse, errorResponse } from "@/lib/utils/api-response";
 import { parsePagination } from "@/lib/utils/pagination";
 import { createLostFoundSchema } from "@/lib/validators/lost-found";
 import { logAction } from "@/lib/audit";
 
-// Helper: strip reporter info for anonymous items shown to non-admins
-function stripReporter(item: any, isAdmin: boolean) {
-  if (item.isAnonymous && !isAdmin) {
-    const { reporterId, reporterName, ...rest } = item;
-    return rest;
-  }
-  return item;
-}
+
 
 export const GET = withAuth(async (req, ctx) => {
   const url = new URL(req.url);

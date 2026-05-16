@@ -21,7 +21,8 @@ export const GET = withAuth(async (req, ctx) => {
   const profile = await getUserPostProfile(userId);
   if (!profile) return errorResponse("User not found", 404);
 
-  const isAdminOrStaff = profile.roleName === "admin" || profile.roleName === "staff";
+  const isAdminOrStaff =
+    profile.roleNames.includes("admin") || profile.roleNames.includes("staff");
 
   const conditions = [isNull(posts.deletedAt)];
 

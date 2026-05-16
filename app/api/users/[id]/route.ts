@@ -16,9 +16,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const resolvedParams = await params;
     const userId = resolvedParams.id === "me" ? auth.user.userId : resolvedParams.id;
 
-    // Must be own profile or have 'user.read' permission
     if (auth.user.userId !== userId) {
-      const hasPerm = await checkPermission(auth.user.roleId, "user.read");
+      const hasPerm = await checkPermission(auth.user.roleIds, "user.read");
       if (!hasPerm) return errorResponse("Forbidden", 403);
     }
 
@@ -110,7 +109,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const userId = resolvedParams.id === "me" ? auth.user.userId : resolvedParams.id;
 
     if (auth.user.userId !== userId) {
-      const hasPerm = await checkPermission(auth.user.roleId, "user.update");
+      const hasPerm = await checkPermission(auth.user.roleIds, "user.update");
       if (!hasPerm) return errorResponse("Forbidden", 403);
     }
 
@@ -129,7 +128,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       if (existing.length > 0) return errorResponse("Email already taken", 409);
     }
 
-    const [updatedUser] = await db.update(users)
+    const [updatedUser] = await db
+      .update(users)
       .set({ ...validation.data, updatedAt: new Date() })
       .where(and(eq(users.id, userId), isNull(users.deletedAt)))
       .returning({ id: users.id, fullName: users.fullName, email: users.email });
@@ -154,14 +154,15 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   try {
     const auth = await authenticateRequest(req);
     if (auth.error || !auth.user) return errorResponse(auth.error || "Unauthorized", auth.status || 401);
-    
-    const hasPerm = await checkPermission(auth.user.roleId, "user.delete");
+
+    const hasPerm = await checkPermission(auth.user.roleIds, "user.delete");
     if (!hasPerm) return errorResponse("Forbidden", 403);
 
     const resolvedParams = await params;
     const userId = resolvedParams.id === "me" ? auth.user.userId : resolvedParams.id;
 
-    const [deletedUser] = await db.update(users)
+    const [deletedUser] = await db
+      .update(users)
       .set({ deletedAt: new Date(), isActive: false })
       .where(and(eq(users.id, userId), isNull(users.deletedAt)))
       .returning({ id: users.id });

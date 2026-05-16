@@ -8,6 +8,5 @@ export const updateUserSchema = z.object({
   collegeId: z.string().uuid().optional(),
   yearOfStudy: z.number().int().min(1).max(7).optional(),
   currentSemester: z.number().int().min(1).max(3).optional(),
-  roleId: z.string().uuid().optional(),
   isActive: z.boolean().optional(),
 });

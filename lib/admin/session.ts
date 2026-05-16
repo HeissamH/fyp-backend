@@ -1,28 +1,34 @@
-import { cookies } from 'next/headers';
-import jwt from 'jsonwebtoken';
-import { redirect } from 'next/navigation';
+import { cookies } from "next/headers";
+import jwt from "jsonwebtoken";
+import { redirect } from "next/navigation";
 
 export async function requireAdminSession() {
   const cookieStore = await cookies();
-  const token = cookieStore.get('admin_token')?.value;
-  
+  const token = cookieStore.get("admin_token")?.value;
+
   if (!token) {
-    redirect('/login');
+    redirect("/login");
   }
 
-  const payload = jwt.decode(token) as any;
+  const payload = jwt.decode(token) as {
+    userId?: string;
+    email?: string;
+    roleIds?: string[];
+    roleId?: string;
+  };
   if (!payload || !payload.userId) {
-    redirect('/login');
+    redirect("/login");
   }
 
-  // We should also ensure this role is an admin role.
-  // Assuming 'roleId' corresponds to admin, but since we use
-  // backend endpoints that already verify permissions, the main thing
-  // is ensuring the JWT parses successfully here.
-  
+  const roleIds = Array.isArray(payload.roleIds)
+    ? payload.roleIds
+    : payload.roleId
+      ? [payload.roleId]
+      : [];
+
   return {
     userId: payload.userId,
-    roleId: payload.roleId,
     email: payload.email,
+    roleIds,
   };
 }

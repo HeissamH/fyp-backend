@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { comments, roles, users as usersTable } from "@/lib/db/schema";
+import { comments } from "@/lib/db/schema";
 import { eq, and, isNull } from "drizzle-orm";
 import { withAuth } from "@/lib/auth/middleware";
 import { successResponse, errorResponse } from "@/lib/utils/api-response";
@@ -16,26 +16,13 @@ export const DELETE = withAuth(async (_req, ctx) => {
     })
     .from(comments)
     .where(
-      and(
-        eq(comments.id, commentId),
-        eq(comments.targetId, id),
-        eq(comments.targetType, "POST"),
-        isNull(comments.deletedAt),
-      ),
+      and(eq(comments.id, commentId), eq(comments.targetId, id), eq(comments.targetType, "POST"), isNull(comments.deletedAt)),
     )
     .limit(1);
 
   if (!comment) return errorResponse("Comment not found", 404);
 
-  const [adminCheck] = await db
-    .select({ name: roles.name })
-    .from(roles)
-    .innerJoin(usersTable, eq(usersTable.roleId, roles.id))
-    .where(eq(usersTable.id, userId))
-    .limit(1);
-
-  const isAdmin = adminCheck?.name === "admin";
-
+  const isAdmin = ctx.user.roleNames.includes("admin");
   if (comment.authorId !== userId && !isAdmin) {
     return errorResponse("Forbidden", 403);
   }

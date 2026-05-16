@@ -1,7 +1,7 @@
 'use client';
 
 import { use, useState } from 'react';
-import { useUser, useUpdateUser } from '../query';
+import { useUser, useUpdateUser, useAssignUserRole, useRevokeUserRole } from '../query';
 import { useRoles } from '@/app/(admin)/dashboard/roles/query';
 import { useAuditLogs } from '@/app/(admin)/dashboard/audit-logs/query';
 import { DataTableSkeleton } from '@/components/admin/ui/DataTableSkeleton';
@@ -205,22 +205,40 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
   const { data, isLoading } = useUser(id);
   const { data: rolesData } = useRoles();
   const { mutate: updateUser, isPending } = useUpdateUser();
-  const [selectedRoleId, setSelectedRoleId] = useState('');
+  const { mutate: assignRole, isPending: assigning } = useAssignUserRole();
+  const { mutate: revokeRole, isPending: revoking } = useRevokeUserRole();
+  const [roleToAddId, setRoleToAddId] = useState('');
 
   const user = data?.data;
   const roles = rolesData?.data || [];
+  const assignedRoles = (user?.roles || []) as { id: string; name: string }[];
+  const availableRoles = roles.filter((r: { id: string }) => !assignedRoles.some((a) => a.id === r.id));
+  const rolesBusy = assigning || revoking;
 
-  const currentRoleId = user?.roleId || '';
-  const effectiveRoleId = selectedRoleId || currentRoleId;
+  const handleAddRole = () => {
+    if (!roleToAddId) return toast.error('Choose a role to add');
+    assignRole(
+      { userId: id, roleId: roleToAddId },
+      {
+        onSuccess: () => {
+          toast.success('Role assigned');
+          setRoleToAddId('');
+        },
+        onError: (err: unknown) =>
+          toast.error(err instanceof Error ? err.message : 'Failed to assign role'),
+      },
+    );
+  };
 
-  const handleRoleChange = () => {
-    if (!selectedRoleId || selectedRoleId === currentRoleId) {
-      return toast.error('Please select a different role');
-    }
-    updateUser({ id, data: { roleId: selectedRoleId } }, {
-      onSuccess: () => toast.success('User role updated successfully'),
-      onError: (err: any) => toast.error(err.message || 'Failed to update role'),
-    });
+  const handleRevokeRole = (roleId: string) => {
+    revokeRole(
+      { userId: id, roleId },
+      {
+        onSuccess: () => toast.success('Role removed'),
+        onError: (err: unknown) =>
+          toast.error(err instanceof Error ? err.message : 'Failed to revoke role'),
+      },
+    );
   };
 
   const handleToggleStatus = () => {
@@ -276,23 +294,63 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
             <h3 style={cardTitleStyle}><ShieldCheck size={16} style={{ marginRight: '8px' }} />Role Assignment</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div>
-                <label style={labelStyle}>Current Role</label>
-                <div style={{ marginTop: '4px' }}><Badge variant="info">{user.roleName || 'Unknown'}</Badge></div>
+                <label style={labelStyle}>Assigned roles</label>
+                <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {assignedRoles.length === 0 ? (
+                    <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>No roles (unexpected)</span>
+                  ) : (
+                    assignedRoles.map((r) => (
+                      <div
+                        key={r.id}
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}
+                      >
+                        <Badge variant={r.name === 'admin' ? 'info' : 'default'}>{r.name}</Badge>
+                        <button
+                          type="button"
+                          onClick={() => handleRevokeRole(r.id)}
+                          disabled={rolesBusy}
+                          style={{
+                            ...primaryBtnStyle,
+                            width: 'auto',
+                            padding: '6px 12px',
+                            fontSize: '12px',
+                            backgroundColor: 'rgba(218,54,51,0.12)',
+                            color: '#ff7b72',
+                          }}
+                        >
+                          Revoke
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
               <div>
-                <label style={labelStyle}>Change Role</label>
-                <select style={selectStyle} value={effectiveRoleId} onChange={e => setSelectedRoleId(e.target.value)}>
-                  <option value="">— Select Role —</option>
-                  {roles.map((r: any) => <option key={r.id} value={r.id}>{r.name}</option>)}
+                <label style={labelStyle}>Add role</label>
+                <select
+                  style={selectStyle}
+                  value={roleToAddId}
+                  onChange={(e) => setRoleToAddId(e.target.value)}
+                >
+                  <option value="">— Select role —</option>
+                  {availableRoles.map((r: any) => (
+                    <option key={r.id} value={r.id}>
+                      {r.name}
+                    </option>
+                  ))}
                 </select>
               </div>
               <button
-                onClick={handleRoleChange}
-                disabled={isPending || !selectedRoleId || selectedRoleId === currentRoleId}
-                style={{ ...primaryBtnStyle, opacity: (!selectedRoleId || selectedRoleId === currentRoleId) ? 0.5 : 1 }}
+                type="button"
+                onClick={handleAddRole}
+                disabled={isPending || rolesBusy || !roleToAddId || availableRoles.length === 0}
+                style={{
+                  ...primaryBtnStyle,
+                  opacity: !roleToAddId || rolesBusy ? 0.5 : 1,
+                }}
               >
-                {isPending ? <Loader2 size={14} style={{ marginRight: '6px' }} /> : <Save size={14} style={{ marginRight: '6px' }} />}
-                Save Role Change
+                {rolesBusy ? <Loader2 size={14} style={{ marginRight: '6px' }} /> : <Save size={14} style={{ marginRight: '6px' }} />}
+                Add role
               </button>
             </div>
           </div>

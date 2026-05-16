@@ -1,18 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyToken, JWTPayload } from "./jwt";
 import { db } from "../db";
-import { users, rolePermissions, permissions } from "../db/schema";
-import { eq, and } from "drizzle-orm";
+import { users, roles, rolePermissions, permissions, userRoles } from "../db/schema";
+import { eq, and, inArray, isNull } from "drizzle-orm";
 import { errorResponse } from "../utils/api-response";
 
+/** User context after auth — `roleIds` and `roleNames` always loaded from DB (active assignments only). */
+export type AuthenticatedUser = {
+  userId: string;
+  email: string;
+  roleIds: string[];
+  roleNames: string[];
+  isActive: boolean;
+};
+
 export interface AuthResult {
-  user?: JWTPayload & { isActive: boolean };
+  user?: AuthenticatedUser;
   error?: string;
   status?: number;
 }
 
 export interface AuthContext {
-  user: JWTPayload & { isActive: boolean };
+  user: AuthenticatedUser;
 }
 
 type RouteContext = { params: Promise<Record<string, string>> };
@@ -21,10 +30,6 @@ type AuthenticatedHandler = (
   ctx: RouteContext & AuthContext,
 ) => Promise<NextResponse>;
 
-/**
- * Wraps a route handler — extracts and verifies the JWT, then injects `user`
- * into the context. Returns 401 if authentication fails.
- */
 export function withAuth(handler: AuthenticatedHandler) {
   return async (req: NextRequest, ctx: RouteContext): Promise<NextResponse> => {
     const auth = await authenticateRequest(req);
@@ -35,13 +40,9 @@ export function withAuth(handler: AuthenticatedHandler) {
   };
 }
 
-/**
- * Wraps a route handler — authenticates AND checks for a specific permission.
- * Returns 401 if unauthenticated, 403 if missing the required permission.
- */
 export function withPermission(handler: AuthenticatedHandler, permissionName: string) {
   return withAuth(async (req, ctx) => {
-    const hasPerm = await checkPermission(ctx.user.roleId, permissionName);
+    const hasPerm = await checkPermission(ctx.user.roleIds, permissionName);
     if (!hasPerm) return errorResponse("Forbidden. Missing required permission.", 403);
     return handler(req, ctx);
   });
@@ -61,7 +62,6 @@ export async function authenticateRequest(request: NextRequest): Promise<AuthRes
       return { error: "Invalid or expired token", status: 401 };
     }
 
-    // Verify user still exists and is active
     const userResult = await db.select().from(users).where(eq(users.id, decoded.userId)).limit(1);
     const user = userResult[0];
 
@@ -79,16 +79,15 @@ export async function authenticateRequest(request: NextRequest): Promise<AuthRes
   }
 }
 
-export async function checkPermission(roleId: string, permissionName: string): Promise<boolean> {
-  const result = await db.select()
+export async function checkPermission(roleIds: string[], permissionName: string): Promise<boolean> {
+  if (roleIds.length === 0) return false;
+
+  const result = await db
+    .select({ id: rolePermissions.id })
     .from(rolePermissions)
     .innerJoin(permissions, eq(rolePermissions.permissionId, permissions.id))
-    .where(
-      and(
-        eq(rolePermissions.roleId, roleId),
-        eq(permissions.name, permissionName)
-      )
-    );
+    .where(and(inArray(rolePermissions.roleId, roleIds), eq(permissions.name, permissionName)))
+    .limit(1);
 
   return result.length > 0;
 }

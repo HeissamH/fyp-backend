@@ -51,7 +51,7 @@ export async function getCurrentUser() {
 
 export async function updateUser(
   id: string,
-  data: { fullName?: string; roleId?: string; isActive?: boolean },
+  data: { fullName?: string; isActive?: boolean; email?: string; programmeId?: string; collegeId?: string },
 ) {
   const res = await fetch(`${BASE_URL}/users/${id}`, {
     method: 'PUT',
@@ -61,6 +61,30 @@ export async function updateUser(
   });
   const json = await res.json();
   if (!res.ok) throw new Error(json.message || 'Failed to update user');
+  return json;
+}
+
+export async function assignUserRole(userId: string, roleId: string) {
+  const res = await fetch(`${BASE_URL}/users/${userId}/roles`, {
+    method: 'POST',
+    headers: await getAuthHeaders(),
+    body: JSON.stringify({ roleId }),
+    cache: 'no-store',
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.message || 'Failed to assign role');
+  return json;
+}
+
+export async function revokeUserRole(userId: string, roleId: string) {
+  const res = await fetch(`${BASE_URL}/users/${userId}/roles`, {
+    method: 'DELETE',
+    headers: await getAuthHeaders(),
+    body: JSON.stringify({ roleId }),
+    cache: 'no-store',
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.message || 'Failed to revoke role');
   return json;
 }
 

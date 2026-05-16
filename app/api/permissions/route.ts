@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
     const auth = await authenticateRequest(req);
     if (auth.error || !auth.user) return errorResponse(auth.error || "Unauthorized", auth.status || 401);
 
-    const hasPerm = await checkPermission(auth.user.roleId, "permission.read");
+    const hasPerm = await checkPermission(auth.user.roleIds, "permission.read");
     if (!hasPerm) return errorResponse("Forbidden", 403);
 
     const result = await db.select({

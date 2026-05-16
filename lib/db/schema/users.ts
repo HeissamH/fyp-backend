@@ -8,9 +8,9 @@ import {
   timestamp,
   index,
 } from "drizzle-orm/pg-core";
-import { roles } from "./roles";
 import { colleges } from "./colleges";
 import { programmes } from "./programmes";
+import { userRoles } from "./user-roles";
 import { relations } from "drizzle-orm";
 
 export const users = pgTable(
@@ -22,7 +22,6 @@ export const users = pgTable(
     sex: varchar("sex", { length: 10 }).notNull(), // 'MALE' | 'FEMALE'
     email: varchar("email", { length: 255 }).notNull().unique(),
     password: text("password").notNull(),
-    roleId: uuid("role_id").notNull().references(() => roles.id),
     collegeId: uuid("college_id").references(() => colleges.id),
     programmeId: uuid("programme_id").references(() => programmes.id),
     yearOfStudy: integer("year_of_study"),
@@ -33,18 +32,14 @@ export const users = pgTable(
     deletedAt: timestamp("deleted_at"),
   },
   (t) => [
-    index("users_role_id_idx").on(t.roleId),
     index("users_college_id_idx").on(t.collegeId),
     index("users_programme_id_idx").on(t.programmeId),
     index("users_deleted_at_idx").on(t.deletedAt),
   ],
 );
 
-export const usersRelations = relations(users, ({ one }) => ({
-  role: one(roles, {
-    fields: [users.roleId],
-    references: [roles.id],
-  }),
+export const usersRelations = relations(users, ({ one, many }) => ({
+  userRoles: many(userRoles),
   college: one(colleges, {
     fields: [users.collegeId],
     references: [colleges.id],

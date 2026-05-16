@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
     if (auth.error || !auth.user) return errorResponse(auth.error || "Unauthorized", auth.status || 401);
     
     // Only admins can create colleges
-    const hasPerm = await checkPermission(auth.user.roleId, "college.manage");
+    const hasPerm = await checkPermission(auth.user.roleIds, "college.manage");
     if (!hasPerm) {
         // Fallback: check if role name is admin (if permissions are not yet seeded)
         // However, better to seed them.

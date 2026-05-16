@@ -36,6 +36,20 @@
       "when": 1779200000000,
       "tag": "0013_posts_groups",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1747248000000,
+      "tag": "0014_multi_role_user_roles",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1778791396066,
+      "tag": "0006_wakeful_union_jack",
+      "breakpoints": true
     }
   ]
 }

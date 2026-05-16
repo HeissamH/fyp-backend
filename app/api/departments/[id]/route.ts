@@ -32,7 +32,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     if (auth.error || !auth.user)
       return errorResponse(auth.error || "Unauthorized", auth.status || 401);
 
-    const hasPerm = await checkPermission(auth.user.roleId, "college.manage");
+    const hasPerm = await checkPermission(auth.user.roleIds, "college.manage");
     if (!hasPerm) return errorResponse("Forbidden. Missing required permission.", 403);
 
     const { id } = await params;
@@ -87,7 +87,7 @@ export async function DELETE(req: NextRequest, { params }: Params) {
     if (auth.error || !auth.user)
       return errorResponse(auth.error || "Unauthorized", auth.status || 401);
 
-    const hasPerm = await checkPermission(auth.user.roleId, "college.manage");
+    const hasPerm = await checkPermission(auth.user.roleIds, "college.manage");
     if (!hasPerm) return errorResponse("Forbidden. Missing required permission.", 403);
 
     const { id } = await params;

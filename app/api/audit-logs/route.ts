@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
     if (auth.error || !auth.user) return errorResponse(auth.error || "Unauthorized", auth.status || 401);
     
     // Only admins with 'audit.read' should view logs
-    const hasPerm = await checkPermission(auth.user.roleId, "audit.read"); 
+    const hasPerm = await checkPermission(auth.user.roleIds, "audit.read"); 
     if (!hasPerm) return errorResponse("Forbidden. Missing required permission.", 403);
     
     const url = new URL(req.url);

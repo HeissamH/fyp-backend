@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
       return errorResponse(auth.error || "Unauthorized", auth.status || 401);
     }
 
-    const hasPerm = await checkPermission(auth.user.roleId, "role.read");
+    const hasPerm = await checkPermission(auth.user.roleIds, "role.read");
     if (!hasPerm) return errorResponse("Forbidden", 403);
 
     const rolesList = await db.select().from(roles).orderBy(desc(roles.createdAt));
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
     const auth = await authenticateRequest(req);
     if (auth.error || !auth.user) return errorResponse(auth.error || "Unauthorized", auth.status || 401);
     
-    const hasPerm = await checkPermission(auth.user.roleId, "role.create");
+    const hasPerm = await checkPermission(auth.user.roleIds, "role.create");
     if (!hasPerm) return errorResponse("Forbidden", 403);
 
     const body = await req.json();

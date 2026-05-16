@@ -27,14 +27,31 @@ export const usersColumns = ({
     header: 'Reg Number',
   },
   {
-    accessorKey: 'roleName',
-    header: 'Role',
+    accessorKey: 'roles',
+    header: 'Roles',
     cell: ({ row }) => {
-      const role = row.original.roleName || 'Unknown';
+      const raw = row.original.roles;
+      const names: string[] = Array.isArray(raw)
+        ? raw.map((r: { name: string }) => r.name).filter(Boolean)
+        : typeof row.original.roleName === 'string'
+          ? [row.original.roleName]
+          : [];
+      const display =
+        names.length === 0
+          ? [{ key: '_unk', label: 'Unknown', variant: 'default' as const }]
+          : names.map((n: string) => ({
+              key: n,
+              label: (n.charAt(0)?.toUpperCase() ?? '') + n.slice(1),
+              variant: n === 'admin' ? ('info' as const) : ('default' as const),
+            }));
       return (
-        <Badge variant={role === 'admin' ? 'info' : 'default'}>
-          {role.charAt(0).toUpperCase() + role.slice(1)}
-        </Badge>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', maxWidth: '220px' }}>
+          {display.map((item) => (
+            <Badge key={item.key} variant={item.variant}>
+              {item.label}
+            </Badge>
+          ))}
+        </div>
       );
     },
   },

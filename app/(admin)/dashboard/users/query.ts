@@ -1,13 +1,15 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { 
-  getUsers, 
-  getUser, 
-  updateUser, 
+import {
+  getUsers,
+  getUser,
+  updateUser,
+  assignUserRole,
+  revokeUserRole,
   deleteUser,
   createUser,
-  GetUsersParams 
+  GetUsersParams,
 } from '@/app/(admin)/actions/users';
 
 export function useUsers(params: GetUsersParams = {}) {
@@ -32,6 +34,28 @@ export function useUpdateUser() {
     onSuccess: (_, variables) => {
       qc.invalidateQueries({ queryKey: ['users'] });
       qc.invalidateQueries({ queryKey: ['users', variables.id] });
+    },
+  });
+}
+
+export function useAssignUserRole() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ userId, roleId }: { userId: string; roleId: string }) => assignUserRole(userId, roleId),
+    onSuccess: (_, v) => {
+      qc.invalidateQueries({ queryKey: ['users'] });
+      qc.invalidateQueries({ queryKey: ['users', v.userId] });
+    },
+  });
+}
+
+export function useRevokeUserRole() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ userId, roleId }: { userId: string; roleId: string }) => revokeUserRole(userId, roleId),
+    onSuccess: (_, v) => {
+      qc.invalidateQueries({ queryKey: ['users'] });
+      qc.invalidateQueries({ queryKey: ['users', v.userId] });
     },
   });
 }

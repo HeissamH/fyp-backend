@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import {
   announcements, announcementAudiences, announcementMedia,
-  users, roles, categories, media,
+  users, categories, media,
 } from "@/lib/db/schema";
 import { eq, and, isNull, sql } from "drizzle-orm";
 import { withAuth, withPermission } from "@/lib/auth/middleware";
@@ -102,10 +102,7 @@ export const PUT = withPermission(async (req, ctx) => {
   if (existing.length === 0) return errorResponse("Announcement not found", 404);
 
   // Check ownership
-  const isAdmin = await db.select({ name: roles.name })
-    .from(roles).innerJoin(users, eq(users.roleId, roles.id))
-    .where(eq(users.id, ctx.user.userId)).limit(1);
-  const isAdminUser = isAdmin[0]?.name === "admin";
+  const isAdminUser = ctx.user.roleNames.includes("admin");
 
   if (existing[0].authorId !== ctx.user.userId && !isAdminUser) {
     return errorResponse("Forbidden", 403);

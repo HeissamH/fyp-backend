@@ -5,12 +5,13 @@ import {
   programmes,
   groupMemberships,
   postAudiences,
+  userRoles,
 } from "@/lib/db/schema";
 import { eq, and, or, isNull, inArray } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 
 export type UserPostProfile = {
-  roleName: string | null;
+  roleNames: string[];
   collegeId: string | null;
   programmeId: string | null;
   departmentId: string | null;
@@ -20,21 +21,26 @@ export type UserPostProfile = {
 export async function getUserPostProfile(userId: string): Promise<UserPostProfile | null> {
   const [row] = await db
     .select({
-      roleName: roles.name,
       collegeId: users.collegeId,
       programmeId: users.programmeId,
       departmentId: programmes.departmentId,
       yearOfStudy: users.yearOfStudy,
     })
     .from(users)
-    .leftJoin(roles, eq(users.roleId, roles.id))
     .leftJoin(programmes, eq(users.programmeId, programmes.id))
     .where(eq(users.id, userId))
     .limit(1);
 
   if (!row) return null;
+
+  const rolesForUser = await db
+    .select({ name: roles.name })
+    .from(userRoles)
+    .innerJoin(roles, eq(userRoles.roleId, roles.id))
+    .where(and(eq(userRoles.userId, userId), isNull(userRoles.revokedAt)));
+
   return {
-    roleName: row.roleName ?? null,
+    roleNames: rolesForUser.map((r) => r.name),
     collegeId: row.collegeId ?? null,
     programmeId: row.programmeId ?? null,
     departmentId: row.departmentId ?? null,
@@ -51,42 +57,25 @@ export async function getActiveGroupIdsForUser(userId: string): Promise<string[]
   return rows.map((r) => r.groupId);
 }
 
-/**
- * Build OR conditions for post_audiences matching the given profile + group IDs.
- */
-export function buildPostAudienceConditions(
-  profile: UserPostProfile,
-  groupIds: string[],
-): SQL[] {
+export function buildPostAudienceConditions(profile: UserPostProfile, groupIds: string[]): SQL[] {
   const audienceConditions: SQL[] = [eq(postAudiences.targetType, "ALL")];
 
-  if (profile.roleName) {
+  if (profile.roleNames.length > 0) {
     audienceConditions.push(
-      and(
-        eq(postAudiences.targetType, "ROLE"),
-        eq(postAudiences.roleTarget, profile.roleName),
-      )!,
+      and(eq(postAudiences.targetType, "ROLE"), inArray(postAudiences.roleTarget, profile.roleNames))!,
     );
   }
   if (profile.collegeId) {
-    audienceConditions.push(
-      and(eq(postAudiences.targetType, "COLLEGE"), eq(postAudiences.collegeId, profile.collegeId))!,
-    );
+    audienceConditions.push(and(eq(postAudiences.targetType, "COLLEGE"), eq(postAudiences.collegeId, profile.collegeId))!);
   }
   if (profile.departmentId) {
     audienceConditions.push(
-      and(
-        eq(postAudiences.targetType, "DEPARTMENT"),
-        eq(postAudiences.departmentId, profile.departmentId),
-      )!,
+      and(eq(postAudiences.targetType, "DEPARTMENT"), eq(postAudiences.departmentId, profile.departmentId))!,
     );
   }
   if (profile.programmeId) {
     audienceConditions.push(
-      and(
-        eq(postAudiences.targetType, "PROGRAMME"),
-        eq(postAudiences.programmeId, profile.programmeId),
-      )!,
+      and(eq(postAudiences.targetType, "PROGRAMME"), eq(postAudiences.programmeId, profile.programmeId))!,
     );
     if (profile.yearOfStudy != null) {
       audienceConditions.push(
@@ -99,15 +88,12 @@ export function buildPostAudienceConditions(
     }
   }
   if (groupIds.length > 0) {
-    audienceConditions.push(
-      and(eq(postAudiences.targetType, "GROUP"), inArray(postAudiences.groupId, groupIds))!,
-    );
+    audienceConditions.push(and(eq(postAudiences.targetType, "GROUP"), inArray(postAudiences.groupId, groupIds))!);
   }
 
   return audienceConditions;
 }
 
-/** Subquery: post IDs visible to this user by audience rules. */
 export function matchingPostIdsSubquery(audienceConditions: SQL[]) {
   return db
     .select({ id: postAudiences.postId })

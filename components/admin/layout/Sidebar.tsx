@@ -29,8 +29,7 @@ const NAV_ITEMS = [
   { label: 'Feedback', href: '/dashboard/feedback', icon: MessageSquareReply },
   { label: 'Stories', href: '/dashboard/stories', icon: Image },
   { label: 'Groups', href: '/dashboard/groups', icon: UsersRound },
-  { label: 'Assignments', href: '/dashboard/assignments', icon: GraduationCap },
-  
+
   { section: 'Platform' },
   { label: 'Colleges', href: '/dashboard/platform/colleges', icon: Building2 },
   { label: 'Departments', href: '/dashboard/platform/departments', icon: LayoutDashboard },

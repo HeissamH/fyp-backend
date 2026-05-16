@@ -17,7 +17,7 @@ async function canViewPost(
   post: { id: string; authorId: string; status: string },
   profile: NonNullable<Awaited<ReturnType<typeof getUserPostProfile>>>,
 ): Promise<boolean> {
-  if (profile.roleName === "admin" || profile.roleName === "staff") return true;
+  if (profile.roleNames.includes("admin") || profile.roleNames.includes("staff")) return true;
   if (post.authorId === userId) return true;
   if (post.status !== "PUBLISHED") return false;
 

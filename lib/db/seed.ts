@@ -1,6 +1,6 @@
 import { db } from "./index";
 import { eq, or } from "drizzle-orm";
-import { roles, permissions, permissionGroups, rolePermissions, users, colleges, categories, eventCategories, programmes, departments } from "./schema";
+import { roles, permissions, permissionGroups, rolePermissions, users, colleges, categories, eventCategories, programmes, departments, userRoles } from "./schema";
 import { hashPassword } from "../auth/password";
 import { generateSlug } from "../utils/slug";
 
@@ -320,10 +320,21 @@ async function main() {
         sex: "MALE",
         email: adminEmail,
         password: hashedUserPassword,
-        roleId: adminRole.id,
         isActive: true,
       })
       .onConflictDoNothing({ target: users.email });
+
+    const [seededAdmin] = await db.select({ id: users.id }).from(users).where(eq(users.email, adminEmail)).limit(1);
+    if (seededAdmin) {
+      await db
+        .insert(userRoles)
+        .values({
+          userId: seededAdmin.id,
+          roleId: adminRole.id,
+          assignedBy: null,
+        })
+        .onConflictDoNothing({ target: [userRoles.userId, userRoles.roleId] });
+    }
 
     console.log("✅ Admin user created/skipped (%s)", adminEmail);
 
@@ -397,13 +408,20 @@ async function main() {
           sex: d.sex,
           email: d.email,
           password: hashedUserPassword,
-          roleId,
           collegeId: coictCollege?.id ?? null,
           programmeId: useProg && csProgramme ? csProgramme.id : null,
           yearOfStudy: d.yearOfStudy ?? null,
           isActive: true,
         })
         .onConflictDoNothing({ target: users.email });
+
+      const [insertedDemo] = await db.select({ id: users.id }).from(users).where(eq(users.email, d.email)).limit(1);
+      if (insertedDemo) {
+        await db
+          .insert(userRoles)
+          .values({ userId: insertedDemo.id, roleId: roleId!, assignedBy: null })
+          .onConflictDoNothing({ target: [userRoles.userId, userRoles.roleId] });
+      }
     }
 
     console.log("✅ Demo users created/skipped (*@udsm.local, same password as above env)");

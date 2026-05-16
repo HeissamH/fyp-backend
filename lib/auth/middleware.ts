@@ -73,7 +73,21 @@ export async function authenticateRequest(request: NextRequest): Promise<AuthRes
       return { error: "User account is inactive", status: 403 };
     }
 
-    return { user: { ...decoded, roleId: user.roleId, isActive: user.isActive } };
+    const roleRows = await db
+      .select({ id: roles.id, name: roles.name })
+      .from(userRoles)
+      .innerJoin(roles, eq(userRoles.roleId, roles.id))
+      .where(and(eq(userRoles.userId, decoded.userId), isNull(userRoles.revokedAt)));
+
+    return {
+      user: {
+        userId: decoded.userId,
+        email: decoded.email,
+        roleIds: roleRows.map((r) => r.id),
+        roleNames: roleRows.map((r) => r.name),
+        isActive: user.isActive,
+      },
+    };
   } catch (error) {
     return { error: "Authentication failed", status: 500 };
   }

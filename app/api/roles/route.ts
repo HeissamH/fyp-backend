@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
-import { roles, rolePermissions, permissions, users } from "@/lib/db/schema";
-import { eq, desc, sql } from "drizzle-orm";
+import { roles, rolePermissions, permissions, userRoles, users } from "@/lib/db/schema";
+import { eq, desc, sql, and, isNull } from "drizzle-orm";
 import { authenticateRequest, checkPermission } from "@/lib/auth/middleware";
 import { successResponse, errorResponse } from "@/lib/utils/api-response";
 import { createRoleSchema } from "@/lib/validators/roles";
@@ -28,11 +28,15 @@ export async function GET(req: NextRequest) {
     .from(rolePermissions)
     .innerJoin(permissions, eq(rolePermissions.permissionId, permissions.id));
 
-    // Fetch user counts per role
-    const userCounts = await db.select({
-      roleId: users.roleId,
-      count: sql<number>`count(*)`
-    }).from(users).groupBy(users.roleId);
+    const userCounts = await db
+      .select({
+        roleId: userRoles.roleId,
+        count: sql<number>`count(distinct ${userRoles.userId})`,
+      })
+      .from(userRoles)
+      .innerJoin(users, eq(userRoles.userId, users.id))
+      .where(and(isNull(userRoles.revokedAt), isNull(users.deletedAt)))
+      .groupBy(userRoles.roleId);
 
     const enrichedRoles = rolesList.map(role => {
       const rolePerms = perms.filter(p => p.roleId === role.id);

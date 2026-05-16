@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
-import { users, roles, colleges, departments, programmes } from "@/lib/db/schema";
+import { users, roles, colleges, departments, programmes, userRoles } from "@/lib/db/schema";
 import { eq, and, isNull, ne } from "drizzle-orm";
 import { authenticateRequest, checkPermission } from "@/lib/auth/middleware";
 import { successResponse, errorResponse } from "@/lib/utils/api-response";
@@ -21,28 +21,33 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       if (!hasPerm) return errorResponse("Forbidden", 403);
     }
 
-    // Fetch user with role
-    const [dbUser] = await db.select({
-      id: users.id,
-      fullName: users.fullName,
-      registrationNumber: users.registrationNumber,
-      sex: users.sex,
-      email: users.email,
-      isActive: users.isActive,
-      roleId: users.roleId,
-      roleName: roles.name,
-      collegeId: users.collegeId,
-      programmeId: users.programmeId,
-      yearOfStudy: users.yearOfStudy,
-      currentSemester: users.currentSemester,
-      createdAt: users.createdAt,
-    })
-    .from(users)
-    .leftJoin(roles, eq(users.roleId, roles.id))
-    .where(and(eq(users.id, userId), isNull(users.deletedAt)))
-    .limit(1);
+    const [dbUser] = await db
+      .select({
+        id: users.id,
+        fullName: users.fullName,
+        registrationNumber: users.registrationNumber,
+        sex: users.sex,
+        email: users.email,
+        isActive: users.isActive,
+        collegeId: users.collegeId,
+        programmeId: users.programmeId,
+        yearOfStudy: users.yearOfStudy,
+        currentSemester: users.currentSemester,
+        createdAt: users.createdAt,
+      })
+      .from(users)
+      .where(and(eq(users.id, userId), isNull(users.deletedAt)))
+      .limit(1);
 
     if (!dbUser) return errorResponse("User not found", 404);
+
+    const roleRows = await db
+      .select({ id: roles.id, name: roles.name })
+      .from(userRoles)
+      .innerJoin(roles, eq(userRoles.roleId, roles.id))
+      .where(and(eq(userRoles.userId, userId), isNull(userRoles.revokedAt)));
+
+    const primary = roleRows[0];
 
     // Resolve programme name
     let programmeInfo: { id: string; name: string; code: string } | null = null;
@@ -84,8 +89,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       sex: dbUser.sex,
       email: dbUser.email,
       isActive: dbUser.isActive,
-      roleId: dbUser.roleId,
-      roleName: dbUser.roleName,
+      roles: roleRows.map((r) => ({ id: r.id, name: r.name })),
+      roleId: primary?.id ?? null,
+      roleName: primary?.name ?? null,
       collegeId: collegeInfo?.id || dbUser.collegeId,
       college: collegeInfo,
       programmeId: dbUser.programmeId,
@@ -118,8 +124,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     if (!validation.success) return errorResponse("Validation failed", 400, validation.error.format());
 
     // Only admins can change roleId or isActive
-    const isAdmin = await checkPermission(auth.user.roleId, "role.update");
-    if (!isAdmin && (validation.data.roleId || validation.data.isActive !== undefined)) {
+    const isAdmin = await checkPermission(auth.user.roleIds, "role.update");
+    if (!isAdmin && validation.data.isActive !== undefined) {
       return errorResponse("Action not allowed", 403);
     }
 

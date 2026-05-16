@@ -45,6 +45,7 @@ export async function POST(req: NextRequest) {
         sex: data.sex,
         email: data.email,
         password: hashedPassword,
+        ...(data.collegeId != null && { collegeId: data.collegeId }),
         programmeId: data.programmeId,
         yearOfStudy: data.yearOfStudy,
         isActive: true,
@@ -62,20 +63,6 @@ export async function POST(req: NextRequest) {
     await db.insert(userRoles).values({
       userId: newUser.id,
       roleId: studentRole.id,
-      collegeId: data.collegeId,
-      programmeId: data.programmeId,
-      yearOfStudy: data.yearOfStudy,
-      isActive: true,
-    }).returning({
-      id: users.id,
-      fullName: users.fullName,
-      registrationNumber: users.registrationNumber,
-      email: users.email,
-      roleId: users.roleId,
-      collegeId: users.collegeId,
-      programmeId: users.programmeId,
-      yearOfStudy: users.yearOfStudy,
-      createdAt: users.createdAt,
     });
 
     await logAction({

@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { lostFoundItems, lostFoundMedia, users, categories, roles, media } from "@/lib/db/schema";
+import { lostFoundItems, lostFoundMedia, users, categories, media } from "@/lib/db/schema";
 import { eq, and, isNull, desc, sql, inArray } from "drizzle-orm";
 import { withAuth } from "@/lib/auth/middleware";
 import { successResponse, errorResponse } from "@/lib/utils/api-response";
@@ -52,11 +52,7 @@ export const GET = withAuth(async (req, ctx) => {
   .orderBy(desc(lostFoundItems.createdAt))
   .limit(pageSize).offset(offset);
 
-  // Check if current user is admin (determines reporter visibility for anonymous items)
-  const [roleCheck] = await db.select({ name: roles.name })
-    .from(roles).innerJoin(users, eq(users.roleId, roles.id))
-    .where(eq(users.id, ctx.user.userId)).limit(1);
-  const isAdmin = roleCheck?.name === "admin";
+  const isAdmin = ctx.user.roleNames.includes("admin");
 
   // Fetch cover images for all items in one query
   const itemIds = list.map(i => i.id);

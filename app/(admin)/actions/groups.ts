@@ -2,7 +2,8 @@
 
 import { getAuthHeaders } from './auth';
 
-const BASE_URL = `${process.env.NEXT_PUBLIC_APP_URL}/api`;
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+const BASE_URL = `${APP_URL}/api`;
 
 export interface GetGroupsParams {
   type?: string;

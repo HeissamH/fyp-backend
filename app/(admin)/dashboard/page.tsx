@@ -1,7 +1,8 @@
 import { requireAdminSession } from '@/lib/admin/session';
 import { cookies } from 'next/headers';
 
-const BASE_URL = 'https://fyp-backend-pi-one.vercel.app/api';
+const APP_URL = process.env.NODE_ENV === "production" ? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://udsminfo.com") : "http://localhost:3000";
+const BASE_URL = `${APP_URL}/api`;
 
 async function getStatsHeaders() {
   const cookieStore = await cookies();

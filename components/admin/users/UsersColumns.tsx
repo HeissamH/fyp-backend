@@ -1,6 +1,6 @@
 import { ColumnDef } from '@tanstack/react-table';
 import { Badge } from '@/components/admin/ui/Badge';
-import { Power, PowerOff, Trash2 } from 'lucide-react';
+import { Power, PowerOff, Trash2, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
 
 export const usersColumns = ({
@@ -38,11 +38,11 @@ export const usersColumns = ({
           : [];
       const display =
         names.length === 0
-          ? [{ key: '_unk', label: 'Unknown', variant: 'default' as const }]
+          ? [{ key: '_student', label: 'Student', variant: 'default' as const }]
           : names.map((n: string) => ({
               key: n,
               label: (n.charAt(0)?.toUpperCase() ?? '') + n.slice(1),
-              variant: n === 'admin' ? ('info' as const) : ('default' as const),
+              variant: n === 'admin' ? ('info' as const) : n === 'student' ? ('default' as const) : ('warning' as const),
             }));
       return (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', maxWidth: '220px' }}>
@@ -81,6 +81,14 @@ export const usersColumns = ({
       const user = row.original;
       return (
         <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+          <Link
+            href={`/dashboard/users/${user.id}`}
+            title="Manage Roles"
+            style={{ ...actionBtn, color: 'var(--primary)', display: 'flex' }}
+          >
+            <ShieldCheck size={16} />
+          </Link>
+
           <button
             style={{ ...actionBtn, color: user.isActive ? 'var(--warning)' : '#3fb950' }}
             onClick={() => onToggleStatus(user.id, user.isActive)}

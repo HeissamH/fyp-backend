@@ -1,13 +1,12 @@
 import { defineConfig } from "drizzle-kit";
-import { config } from "dotenv";
+import * as dotenv from "dotenv";
 
-config({ path: ".env.local" });
+dotenv.config({ path: ".env.local" });
 
-/** Drizzle Kit: use same `DATABASE_URL` as the app (e.g. Supabase pool URI from Dashboard). */
 export default defineConfig({
+  dialect: "postgresql",
   schema: "./lib/db/schema/index.ts",
   out: "./lib/db/migrations",
-  dialect: "postgresql",
   dbCredentials: {
     url: process.env.DATABASE_URL!,
   },

@@ -17,7 +17,7 @@ function AddUserModal({ onClose }: { onClose: () => void }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [registrationNumber, setRegistrationNumber] = useState('');
-  const [roleId, setRoleId] = useState('');
+  const [roleIds, setRoleIds] = useState<string[]>([]);
   const [collegeId, setCollegeId] = useState('');
   const [programmeId, setProgrammeId] = useState('');
   const [yearOfStudy, setYearOfStudy] = useState('');
@@ -36,7 +36,7 @@ function AddUserModal({ onClose }: { onClose: () => void }) {
         email,
         password,
         registrationNumber: registrationNumber || undefined,
-        roleId: roleId || undefined,
+        roleIds: roleIds.length > 0 ? roleIds : undefined,
         collegeId: collegeId || undefined,
         programmeId: programmeId || undefined,
         yearOfStudy: yearOfStudy ? Number(yearOfStudy) : undefined,
@@ -80,11 +80,65 @@ function AddUserModal({ onClose }: { onClose: () => void }) {
           </div>
 
           <div style={fGroup}>
-            <label style={lStyle}>Role</label>
-            <select style={sStyle} value={roleId} onChange={e => setRoleId(e.target.value)}>
-              <option value="">— Select Role (optional) —</option>
-              {rolesData?.data?.map((r: any) => <option key={r.id} value={r.id}>{r.name}</option>)}
+            <label style={lStyle}>Roles</label>
+            <select
+              style={sStyle}
+              value=""
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val && !roleIds.includes(val)) {
+                  setRoleIds([...roleIds, val]);
+                }
+              }}
+            >
+              <option value="">— Add Role (optional) —</option>
+              {rolesData?.data
+                ?.filter((r: any) => !roleIds.includes(r.id))
+                .map((r: any) => (
+                  <option key={r.id} value={r.id}>
+                    {r.name}
+                  </option>
+                ))}
             </select>
+            {roleIds.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '6px' }}>
+                {roleIds.map((id) => {
+                  const r = rolesData?.data?.find((x: any) => x.id === id);
+                  return (
+                    <div
+                      key={id}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        backgroundColor: 'var(--surface)',
+                        padding: '4px 8px',
+                        borderRadius: 'var(--radius-sm)',
+                        fontSize: '12px',
+                        color: 'var(--text)',
+                        border: '1px solid var(--border)',
+                      }}
+                    >
+                      {r?.name || id}
+                      <button
+                        type="button"
+                        onClick={() => setRoleIds(roleIds.filter((x) => x !== id))}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          padding: 0,
+                          cursor: 'pointer',
+                          color: 'var(--text-muted)',
+                          display: 'flex',
+                        }}
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>

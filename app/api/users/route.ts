@@ -2,9 +2,12 @@ import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { users, roles, userRoles } from "@/lib/db/schema";
 import { eq, ilike, or, and, desc, isNull, inArray, sql } from "drizzle-orm";
-import { authenticateRequest, checkPermission } from "@/lib/auth/middleware";
+import { authenticateRequest, checkPermission, withPermission } from "@/lib/auth/middleware";
 import { successResponse, errorResponse, paginatedResponse } from "@/lib/utils/api-response";
 import { parsePagination } from "@/lib/utils/pagination";
+import { hashPassword } from "@/lib/auth/password";
+import { adminCreateUserSchema } from "@/lib/validators/users";
+import { logAction } from "@/lib/audit";
 
 export async function GET(req: NextRequest) {
   try {
@@ -92,6 +95,65 @@ export async function GET(req: NextRequest) {
   }
 }
 
-export async function POST(req: NextRequest) {
-  return errorResponse("Use /api/auth/register for user creation", 400);
-}
+export const POST = withPermission(async (req: NextRequest, ctx) => {
+  try {
+    const body = await req.json();
+    const validation = adminCreateUserSchema.safeParse(body);
+    if (!validation.success) return errorResponse("Validation failed", 400, validation.error.format());
+
+    const data = validation.data;
+
+    const existingUser = await db
+      .select()
+      .from(users)
+      .where(
+        or(
+          eq(users.email, data.email),
+          data.registrationNumber ? eq(users.registrationNumber, data.registrationNumber) : sql`false`
+        )
+      )
+      .limit(1);
+
+    if (existingUser.length > 0) return errorResponse("Email or Registration Number already exists", 409);
+
+    const hashedPassword = await hashPassword(data.password);
+
+    const [newUser] = await db
+      .insert(users)
+      .values({
+        fullName: data.fullName,
+        email: data.email,
+        password: hashedPassword,
+        registrationNumber: data.registrationNumber || `N/A-${Date.now()}`,
+        sex: data.sex || "FEMALE",
+        collegeId: data.collegeId,
+        programmeId: data.programmeId,
+        yearOfStudy: data.yearOfStudy,
+        isActive: true,
+      })
+      .returning();
+
+    if (data.roleIds && data.roleIds.length > 0) {
+      const roleInserts = data.roleIds.map(roleId => ({
+        userId: newUser.id,
+        roleId: roleId,
+        assignedBy: ctx.user.userId,
+      }));
+      await db.insert(userRoles).values(roleInserts);
+    }
+
+    await logAction({
+      userId: ctx.user.userId,
+      action: "CREATE_USER",
+      entity: "USER",
+      entityId: newUser.id,
+      ipAddress: req.headers.get("x-forwarded-for") || "Unknown",
+      userAgent: req.headers.get("user-agent") || "Unknown",
+    });
+
+    return successResponse(newUser, "User created successfully", 201);
+  } catch (error) {
+    console.error("User creation error:", error);
+    return errorResponse("Internal server error", 500);
+  }
+}, "user.create");

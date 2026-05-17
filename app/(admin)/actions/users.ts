@@ -103,7 +103,7 @@ export interface CreateUserData {
   fullName: string;
   email: string;
   password: string;
-  roleId?: string;
+  roleIds?: string[];
   collegeId?: string;
   programmeId?: string;
   yearOfStudy?: number;

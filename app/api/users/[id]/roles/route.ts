@@ -27,7 +27,7 @@ export const POST = withPermission(async (req: NextRequest, ctx) => {
 
   const row = existing[0];
 
-  if (row?.revokedAt == null) {
+  if (row && row.revokedAt === null) {
     return successResponse(null, "User already has this role", 200);
   }
 

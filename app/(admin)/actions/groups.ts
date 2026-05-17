@@ -2,7 +2,7 @@
 
 import { getAuthHeaders } from './auth';
 
-const APP_URL = process.env.NODE_ENV === "production" ? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://udsminfo.com") : "http://localhost:3000";
+const APP_URL = process.env.NODE_ENV === "production" ? "https://www.udsminfo.com" : "http://localhost:3000";
 const BASE_URL = `${APP_URL}/api`;
 
 export interface GetGroupsParams {

@@ -73,6 +73,7 @@ export async function assignUserRole(userId: string, roleId: string) {
     cache: 'no-store',
   });
   const json = await res.json();
+  console.log('[assignUserRole] status:', res.status, 'response:', JSON.stringify(json));
   if (!res.ok) throw new Error(json.message || 'Failed to assign role');
   return json;
 }
@@ -85,6 +86,7 @@ export async function revokeUserRole(userId: string, roleId: string) {
     cache: 'no-store',
   });
   const json = await res.json();
+  console.log('[revokeUserRole] status:', res.status, 'response:', JSON.stringify(json));
   if (!res.ok) throw new Error(json.message || 'Failed to revoke role');
   return json;
 }

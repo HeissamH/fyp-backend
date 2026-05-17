@@ -16,6 +16,7 @@ export function useUsers(params: GetUsersParams = {}) {
   return useQuery({
     queryKey: ['users', params],
     queryFn: () => getUsers(params),
+    staleTime: 0, // always refetch after invalidation (e.g. after role changes)
   });
 }
 
@@ -24,6 +25,7 @@ export function useUser(id: string) {
     queryKey: ['users', id],
     queryFn: () => getUser(id),
     enabled: !!id,
+    staleTime: 0, // always refetch after invalidation
   });
 }
 

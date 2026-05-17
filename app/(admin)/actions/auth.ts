@@ -3,7 +3,7 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
-const BASE_URL = 'https://fyp-backend-pi-one.vercel.app/api';
+const BASE_URL = `${process.env.NEXT_PUBLIC_APP_URL}/api`;
 
 export async function getAuthHeaders(): Promise<Record<string, string>> {
   const cookieStore = await cookies();

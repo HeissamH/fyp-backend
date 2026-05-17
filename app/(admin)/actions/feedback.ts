@@ -2,7 +2,7 @@
 
 import { getAuthHeaders } from './auth';
 
-const BASE_URL = 'https://fyp-backend-pi-one.vercel.app/api';
+const BASE_URL = `${process.env.NEXT_PUBLIC_APP_URL}/api`;
 
 export interface GetFeedbackParams {
   page?: number;

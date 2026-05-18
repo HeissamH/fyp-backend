@@ -1,11 +1,11 @@
-import { pgTable, uuid, varchar, integer, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, uuid, varchar, integer, timestamp, text } from "drizzle-orm/pg-core";
 import { users } from "./users";
 import { relations } from "drizzle-orm";
 
 export const media = pgTable("media", {
   id: uuid("id").primaryKey().defaultRandom(),
   uploadedBy: uuid("uploaded_by").notNull().references(() => users.id),
-  url: varchar("url", { length: 500 }).notNull(),
+  url: text("url").notNull(),
   type: varchar("type", { length: 10 }).notNull(), // "IMAGE" | "VIDEO" | "FILE"
   mimeType: varchar("mime_type", { length: 100 }).notNull(),
   sizeBytes: integer("size_bytes").notNull(),

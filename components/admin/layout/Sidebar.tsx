@@ -9,6 +9,7 @@ import {
   Calendar, 
   Box, 
   MessageSquareReply, 
+  MessageSquare,
   Image, 
   UsersRound, 
   ShieldAlert, 
@@ -27,6 +28,7 @@ const NAV_ITEMS = [
   { label: 'Events', href: '/dashboard/events', icon: Calendar },
   { label: 'Lost & Found', href: '/dashboard/lost-and-found', icon: Box },
   { label: 'Feedback', href: '/dashboard/feedback', icon: MessageSquareReply },
+  { label: 'Comments', href: '/dashboard/comments', icon: MessageSquare },
   { label: 'Stories', href: '/dashboard/stories', icon: Image },
   { label: 'Groups', href: '/dashboard/groups', icon: UsersRound },
 

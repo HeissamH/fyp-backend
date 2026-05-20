@@ -17,7 +17,10 @@ export const GET = withAuth(async (req, ctx) => {
   const status = sp.get("status") || "OPEN";
   const categoryId = sp.get("categoryId");
 
-  const conditions = [isNull(lostFoundItems.deletedAt)];
+  const conditions = [
+    isNull(lostFoundItems.deletedAt),
+    sql`(${lostFoundItems.status} = 'OPEN' OR (${lostFoundItems.status} = 'RESOLVED' AND ${lostFoundItems.resolvedAt} > NOW() - INTERVAL '24 hours'))`
+  ];
   if (type) conditions.push(eq(lostFoundItems.type, type));
   if (status && status !== "ALL") conditions.push(eq(lostFoundItems.status, status));
   if (categoryId) conditions.push(eq(lostFoundItems.categoryId, categoryId));

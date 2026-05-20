@@ -14,7 +14,7 @@ export const GET = withAuth(async (req, ctx) => {
   const sp = url.searchParams;
   const { page, pageSize, offset } = parsePagination(sp);
   const type = sp.get("type");
-  const status = sp.get("status") || "OPEN";
+  const status = sp.get("status") || "ALL";
   const categoryId = sp.get("categoryId");
 
   const conditions = [

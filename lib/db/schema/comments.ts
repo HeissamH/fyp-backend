@@ -1,5 +1,6 @@
 import { pgTable, uuid, varchar, text, timestamp } from "drizzle-orm/pg-core";
 import { users } from "./users";
+import { media } from "./media";
 import { relations } from "drizzle-orm";
 
 export const comments = pgTable("comments", {
@@ -10,6 +11,7 @@ export const comments = pgTable("comments", {
   // "ANNOUNCEMENT" | "EVENT" | "LOST_FOUND" | "POST"
   parentId: uuid("parent_id").references((): any => comments.id, { onDelete: "cascade" }),
   content: text("content").notNull(),
+  mediaId: uuid("media_id").references(() => media.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   deletedAt: timestamp("deleted_at"),
@@ -17,6 +19,7 @@ export const comments = pgTable("comments", {
 
 export const commentsRelations = relations(comments, ({ one, many }) => ({
   author: one(users, { fields: [comments.authorId], references: [users.id] }),
+  media: one(media, { fields: [comments.mediaId], references: [media.id] }),
   parent: one(comments, { fields: [comments.parentId], references: [comments.id], relationName: 'replies' }),
   replies: many(comments, { relationName: 'replies' }),
 }));

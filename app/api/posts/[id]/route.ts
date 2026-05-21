@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { posts, postAudiences, users, media } from "@/lib/db/schema";
+import { posts, postAudiences, users, media, reactions, comments } from "@/lib/db/schema";
 import { eq, and, isNull, inArray, sql } from "drizzle-orm";
 import { withAuth, withPermission } from "@/lib/auth/middleware";
 import { successResponse, errorResponse } from "@/lib/utils/api-response";
@@ -56,6 +56,9 @@ export const GET = withAuth(async (_req, ctx) => {
       authorName: users.fullName,
       mediaId: media.id,
       mediaUrl: media.url,
+      likeCount: sql<number>`CAST((SELECT count(*) FROM ${reactions} WHERE ${reactions.targetId} = ${posts.id} AND ${reactions.targetType} = 'POST') AS INT)`,
+      commentCount: sql<number>`CAST((SELECT count(*) FROM ${comments} WHERE ${comments.targetId} = ${posts.id} AND ${comments.targetType} = 'ANNOUNCEMENT') AS INT)`,
+      isLiked: sql<boolean>`EXISTS(SELECT 1 FROM ${reactions} WHERE ${reactions.targetId} = ${posts.id} AND ${reactions.targetType} = 'POST' AND ${reactions.userId} = ${userId})`,
     })
     .from(posts)
     .leftJoin(users, eq(posts.authorId, users.id))
@@ -85,6 +88,9 @@ export const GET = withAuth(async (_req, ctx) => {
     publishedAt: row.publishedAt,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
+    likeCount: row.likeCount,
+    commentCount: row.commentCount,
+    isLiked: row.isLiked,
     author: { id: row.authorId, fullName: row.authorName },
     media: row.mediaUrl ? { id: row.mediaId, url: row.mediaUrl } : null,
   });

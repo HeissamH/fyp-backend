@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { posts, postAudiences, users, media } from "@/lib/db/schema";
+import { posts, postAudiences, users, media, reactions, comments } from "@/lib/db/schema";
 import { eq, and, isNull, desc, ilike, inArray, sql } from "drizzle-orm";
 import { withAuth, withPermission } from "@/lib/auth/middleware";
 import { successResponse, errorResponse, paginatedResponse } from "@/lib/utils/api-response";
@@ -59,6 +59,9 @@ export const GET = withAuth(async (req, ctx) => {
       authorName: users.fullName,
       mediaId: media.id,
       mediaUrl: media.url,
+      likeCount: sql<number>`CAST((SELECT count(*) FROM ${reactions} WHERE ${reactions.targetId} = ${posts.id} AND ${reactions.targetType} = 'POST') AS INT)`,
+      commentCount: sql<number>`CAST((SELECT count(*) FROM ${comments} WHERE ${comments.targetId} = ${posts.id} AND ${comments.targetType} = 'ANNOUNCEMENT') AS INT)`,
+      isLiked: sql<boolean>`EXISTS(SELECT 1 FROM ${reactions} WHERE ${reactions.targetId} = ${posts.id} AND ${reactions.targetType} = 'POST' AND ${reactions.userId} = ${userId})`,
     })
     .from(posts)
     .leftJoin(users, eq(posts.authorId, users.id))
@@ -78,6 +81,9 @@ export const GET = withAuth(async (req, ctx) => {
     viewCount: p.viewCount,
     publishedAt: p.publishedAt,
     createdAt: p.createdAt,
+    likeCount: p.likeCount,
+    commentCount: p.commentCount,
+    isLiked: p.isLiked,
     author: { id: p.authorId, fullName: p.authorName },
     media: p.mediaUrl ? { id: p.mediaId, url: p.mediaUrl } : null,
   }));

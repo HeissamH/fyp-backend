@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
-import { comments, users } from "@/lib/db/schema";
-import { eq, and, isNull, desc } from "drizzle-orm";
+import { comments, users, media, reactions } from "@/lib/db/schema";
+import { eq, and, isNull, desc, sql } from "drizzle-orm";
 import { withAuth } from "@/lib/auth/middleware";
 import { successResponse, errorResponse } from "@/lib/utils/api-response";
 import { createCommentSchema } from "@/lib/validators/comments";
@@ -14,6 +14,9 @@ type RawComment = {
   authorId: string;
   authorName: string;
   content: string;
+  imageUrl: string | null;
+  likeCount: number;
+  isLiked: boolean;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -40,7 +43,7 @@ function buildTree(flat: RawComment[]): CommentNode[] {
 }
 
 // ─── GET /api/comments?targetId=X&targetType=Y ───────────────────────────────
-export const GET = withAuth(async (req) => {
+export const GET = withAuth(async (req, ctx) => {
   const url = new URL(req.url);
   const targetId = url.searchParams.get("targetId");
   const targetType = url.searchParams.get("targetType");
@@ -56,11 +59,15 @@ export const GET = withAuth(async (req) => {
       authorId: users.id,
       authorName: users.fullName,
       content: comments.content,
+      imageUrl: media.url,
+      likeCount: sql<number>`CAST((SELECT count(*) FROM ${reactions} WHERE ${reactions.targetId} = ${comments.id} AND ${reactions.targetType} = 'COMMENT') AS INT)`,
+      isLiked: sql<boolean>`EXISTS(SELECT 1 FROM ${reactions} WHERE ${reactions.targetId} = ${comments.id} AND ${reactions.targetType} = 'COMMENT' AND ${reactions.userId} = ${ctx.user.userId})`,
       createdAt: comments.createdAt,
       updatedAt: comments.updatedAt,
     })
     .from(comments)
     .leftJoin(users, eq(comments.authorId, users.id))
+    .leftJoin(media, eq(comments.mediaId, media.id))
     .where(
       and(
         eq(comments.targetId, targetId),
@@ -82,7 +89,7 @@ export const POST = withAuth(async (req, ctx) => {
     return errorResponse("Validation failed", 400, validation.error.format());
   }
 
-  const { targetId, targetType, content, parentId } = validation.data;
+  const { targetId, targetType, content, parentId, mediaId } = validation.data;
 
   // If a parentId is given, ensure it belongs to the same target
   if (parentId) {
@@ -106,6 +113,7 @@ export const POST = withAuth(async (req, ctx) => {
       targetType,
       content,
       parentId: parentId ?? null,
+      mediaId: mediaId ?? null,
     })
     .returning();
 

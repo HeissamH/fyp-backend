@@ -61,7 +61,7 @@ function CommentItem({
               <div className="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center text-xs font-bold text-white">
                 {comment.authorName?.[0]?.toUpperCase() ?? '?'}
               </div>
-              <span className="text-sm font-semibold text-zinc-100">{comment.authorName ?? 'Unknown'}</span>
+              <span className="text-sm font-semibold text-zinc-100">{comment.authorName?.split('@')[0].trim() ?? 'Unknown'}</span>
               <span className="text-xs text-zinc-500">
                 {new Date(comment.createdAt).toLocaleString()}
               </span>
@@ -140,10 +140,10 @@ function CommentItem({
         </div>
 
         {/* Inline reply box */}
-        {replying && (
+         {replying && (
           <div className="mt-2 ml-4 flex flex-col gap-2">
             <textarea
-              placeholder={`Replying to ${comment.authorName}…`}
+              placeholder={`Replying to ${comment.authorName?.split('@')[0].trim()}…`}
               value={replyContent}
               onChange={e => setReplyContent(e.target.value)}
               rows={2}

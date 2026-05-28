@@ -22,6 +22,7 @@ export interface CreateStoryData {
   backgroundColor?: string;
   linkUrl?: string;
   linkText?: string;
+  expiresAt?: string;
 }
 
 export async function createStory(data: CreateStoryData) {

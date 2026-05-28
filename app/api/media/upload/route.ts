@@ -45,7 +45,7 @@ export const POST = withAuth(async (req, ctx) => {
 
   if (uploadError) {
     console.error("Supabase upload error:", uploadError);
-    return errorResponse("Failed to upload file", 500);
+    return errorResponse(`Failed to upload file: ${uploadError?.message || uploadError}`, 500);
   }
 
   // Generate signed URL (valid for 1 year — private bucket)

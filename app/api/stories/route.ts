@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { stories, storyViews, users, colleges, media } from "@/lib/db/schema";
-import { eq, and, isNull, gt, desc, sql } from "drizzle-orm";
+import { eq, and, isNull, gt, desc } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { withAuth, withPermission } from "@/lib/auth/middleware";
 import { successResponse, errorResponse } from "@/lib/utils/api-response";
@@ -98,6 +98,14 @@ export const POST = withPermission(async (req, ctx) => {
       .where(eq(users.id, ctx.user.userId))
       .limit(1);
     resolvedCollegeId = author?.collegeId ?? null;
+  }
+
+  // A story with no college would be invisible in the app tray — reject early.
+  if (!resolvedCollegeId) {
+    return errorResponse(
+      "Your account has no college assigned. Please contact an administrator before posting a story.",
+      400,
+    );
   }
 
   try {

@@ -9,6 +9,9 @@ import {
   deleteAnnouncement, 
   pinAnnouncement,
   getCategories,
+  getColleges,
+  getProgrammes,
+  uploadMedia,
   GetAnnouncementsParams,
   CreateAnnouncementData
 } from '@/app/(admin)/actions/announcements';
@@ -67,5 +70,25 @@ export function useCategories() {
   return useQuery({
     queryKey: ['categories'],
     queryFn: () => getCategories(),
+  });
+}
+
+export function useColleges() {
+  return useQuery({
+    queryKey: ['colleges'],
+    queryFn: () => getColleges(),
+  });
+}
+
+export function useProgrammes() {
+  return useQuery({
+    queryKey: ['programmes'],
+    queryFn: () => getProgrammes(),
+  });
+}
+
+export function useMediaUpload() {
+  return useMutation({
+    mutationFn: (formData: FormData) => uploadMedia(formData),
   });
 }

@@ -3,190 +3,83 @@
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
-import { Bold, Italic, Strikethrough, List, ListOrdered, Link as LinkIcon, Heading2 } from 'lucide-react';
+import { Bold, Italic, Link as LinkIcon, List, ListOrdered, Heading } from 'lucide-react';
 import { useEffect } from 'react';
 
-export function RichTextEditor({ value, onChange }: { value: string; onChange: (val: string) => void }) {
+export function RichTextEditor({ value, onChange }: { value: string, onChange: (val: string) => void }) {
   const editor = useEditor({
     extensions: [
       StarterKit,
       Link.configure({
         openOnClick: false,
-      })
+        HTMLAttributes: {
+          class: 'text-primary underline',
+        },
+      }),
     ],
     content: value,
     onUpdate: ({ editor }) => {
-      onChange(editor.getHTML());
-    },
-    editorProps: {
-      attributes: {
-        class: 'tiptap-editor-content',
-      },
+      // Always store HTML into the value
+      const html = editor.getHTML();
+      onChange(html);
     },
   });
 
-  // Sync external changes (like resetting form)
+  // Keep editor content in sync if value changes outside (but ignore if user is typing)
   useEffect(() => {
-    if (editor && value === '' && editor.getHTML() !== '<p></p>') {
-      editor.commands.setContent('');
+    if (editor && value !== editor.getHTML() && !editor.isFocused) {
+      editor.commands.setContent(value);
     }
   }, [value, editor]);
 
-  if (!editor) {
-    return null;
-  }
-
-  const setLink = () => {
-    const previousUrl = editor.getAttributes('link').href;
-    const url = window.prompt('URL', previousUrl);
-    
-    if (url === null) {
-      return;
-    }
-    
-    if (url === '') {
-      editor.chain().focus().extendMarkRange('link').unsetLink().run();
-      return;
-    }
-    
-    editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
-  };
+  if (!editor) return null;
 
   return (
-    <div style={styles.container}>
-      <div style={styles.toolbar}>
-        <button
-          type="button"
-          onClick={() => editor.chain().focus().toggleBold().run()}
-          style={{ ...styles.toolbarBtn, ...(editor.isActive('bold') ? styles.toolbarBtnActive : {}) }}
-          title="Bold"
-        >
+    <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden', backgroundColor: 'var(--bg)' }}>
+      <div style={{ display: 'flex', gap: '4px', padding: '8px', borderBottom: '1px solid var(--border)', backgroundColor: 'var(--surface-2)', flexWrap: 'wrap' }}>
+        <button type="button" onClick={() => editor.chain().focus().toggleBold().run()} style={btnStyle(editor.isActive('bold'))}>
           <Bold size={16} />
         </button>
-        <button
-          type="button"
-          onClick={() => editor.chain().focus().toggleItalic().run()}
-          style={{ ...styles.toolbarBtn, ...(editor.isActive('italic') ? styles.toolbarBtnActive : {}) }}
-          title="Italic"
-        >
+        <button type="button" onClick={() => editor.chain().focus().toggleItalic().run()} style={btnStyle(editor.isActive('italic'))}>
           <Italic size={16} />
         </button>
-        <button
-          type="button"
-          onClick={() => editor.chain().focus().toggleStrike().run()}
-          style={{ ...styles.toolbarBtn, ...(editor.isActive('strike') ? styles.toolbarBtnActive : {}) }}
-          title="Strikethrough"
-        >
-          <Strikethrough size={16} />
+        <div style={{ width: '1px', backgroundColor: 'var(--border)', margin: '0 4px' }} />
+        <button type="button" onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} style={btnStyle(editor.isActive('heading', { level: 2 }))}>
+          <Heading size={16} />
         </button>
-        
-        <div style={styles.divider} />
-        
-        <button
-          type="button"
-          onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-          style={{ ...styles.toolbarBtn, ...(editor.isActive('heading', { level: 2 }) ? styles.toolbarBtnActive : {}) }}
-          title="Heading 2"
-        >
-          <Heading2 size={16} />
-        </button>
-        <button
-          type="button"
-          onClick={() => editor.chain().focus().toggleBulletList().run()}
-          style={{ ...styles.toolbarBtn, ...(editor.isActive('bulletList') ? styles.toolbarBtnActive : {}) }}
-          title="Bullet List"
-        >
+        <button type="button" onClick={() => editor.chain().focus().toggleBulletList().run()} style={btnStyle(editor.isActive('bulletList'))}>
           <List size={16} />
         </button>
-        <button
-          type="button"
-          onClick={() => editor.chain().focus().toggleOrderedList().run()}
-          style={{ ...styles.toolbarBtn, ...(editor.isActive('orderedList') ? styles.toolbarBtnActive : {}) }}
-          title="Numbered List"
-        >
+        <button type="button" onClick={() => editor.chain().focus().toggleOrderedList().run()} style={btnStyle(editor.isActive('orderedList'))}>
           <ListOrdered size={16} />
         </button>
-        
-        <div style={styles.divider} />
-        
-        <button
-          type="button"
-          onClick={setLink}
-          style={{ ...styles.toolbarBtn, ...(editor.isActive('link') ? styles.toolbarBtnActive : {}) }}
-          title="Add Link"
-        >
+        <button type="button" onClick={() => {
+          const url = window.prompt('Enter URL:');
+          if (url) editor.chain().focus().setLink({ href: url }).run();
+        }} style={btnStyle(editor.isActive('link'))}>
           <LinkIcon size={16} />
         </button>
       </div>
-
-      <EditorContent editor={editor} style={styles.content} className="tiptap-wrapper" />
-      
-      <style dangerouslySetInnerHTML={{__html: `
-        .tiptap-editor-content {
-          min-height: 200px;
-          outline: none;
-        }
-        .tiptap-editor-content p {
-          margin-top: 0;
-          margin-bottom: 0.5em;
-        }
-        .tiptap-editor-content ul, .tiptap-editor-content ol {
-          padding-left: 20px;
-          margin: 0;
-        }
-        .tiptap-editor-content a {
-          color: var(--info);
-          text-decoration: underline;
-        }
-        .tiptap-editor-content h2 {
-          font-size: 1.5em;
-          margin-top: 1em;
-          margin-bottom: 0.5em;
-        }
-      `}} />
+      <div style={{ padding: '12px', minHeight: '220px', cursor: 'text' }} onClick={() => editor.chain().focus().run()}>
+        <style>{`
+          .ProseMirror { outline: none; height: 100%; min-height: 200px; }
+          .ProseMirror p { margin: 0 0 1em 0; }
+          .ProseMirror ul, .ProseMirror ol { padding-left: 20px; }
+        `}</style>
+        <EditorContent editor={editor} />
+      </div>
     </div>
   );
 }
 
-const styles: Record<string, React.CSSProperties> = {
-  container: {
-    border: '1px solid var(--border)',
-    borderRadius: 'var(--radius)',
-    backgroundColor: 'var(--bg)',
-    overflow: 'hidden',
-  },
-  toolbar: {
-    display: 'flex',
-    gap: '4px',
-    padding: '8px',
-    backgroundColor: 'var(--surface-2)',
-    borderBottom: '1px solid var(--border)',
-    flexWrap: 'wrap',
-  },
-  divider: {
-    width: '1px',
-    backgroundColor: 'var(--border)',
-    margin: '0 4px',
-  },
-  toolbarBtn: {
-    padding: '6px',
-    backgroundColor: 'transparent',
-    border: 'none',
-    borderRadius: '4px',
-    color: 'var(--text-muted)',
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  toolbarBtnActive: {
-    backgroundColor: 'var(--surface-hover)',
-    color: 'var(--text)',
-  },
-  content: {
-    padding: '16px',
-    color: 'var(--text)',
-    fontSize: '14px',
-    lineHeight: 1.6,
-  }
-};
+const btnStyle = (active: boolean): React.CSSProperties => ({
+  padding: '6px',
+  backgroundColor: active ? 'var(--primary)' : 'transparent',
+  color: active ? '#fff' : 'var(--text-muted)',
+  border: 'none',
+  borderRadius: '4px',
+  cursor: 'pointer',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+});

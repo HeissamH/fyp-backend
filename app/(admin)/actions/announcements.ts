@@ -125,3 +125,41 @@ export async function getCategories() {
   if (!res.ok) throw new Error(json.message || 'Failed to fetch categories');
   return json;
 }
+
+export async function getColleges() {
+  const res = await fetch(`${BASE_URL}/colleges`, {
+    headers: await getAuthHeaders(),
+    cache: 'no-store',
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.message || 'Failed to fetch colleges');
+  return json;
+}
+
+export async function getProgrammes() {
+  const res = await fetch(`${BASE_URL}/programmes`, {
+    headers: await getAuthHeaders(),
+    cache: 'no-store',
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.message || 'Failed to fetch programmes');
+  return json;
+}
+
+export async function uploadMedia(formData: FormData) {
+  const { cookies } = await import('next/headers');
+  const cookieStore = await cookies();
+  const token = cookieStore.get('admin_token')?.value;
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const res = await fetch(`${BASE_URL}/media/upload`, {
+    method: 'POST',
+    headers,
+    body: formData,
+    cache: 'no-store',
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.message || 'Failed to upload media');
+  return json;
+}

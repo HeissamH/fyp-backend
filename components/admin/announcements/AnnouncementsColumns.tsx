@@ -101,23 +101,23 @@ function AnnouncementActions({ announcement }: { announcement: any }) {
 
   return (
     <div style={{ display: 'flex', gap: '4px', justifyContent: 'flex-end' }}>
-      <Link href={`/dashboard/announcements/${announcement.id}/edit`} style={{ ...styles.btn, color: 'var(--info)', display: 'flex', alignItems: 'center' }} title="Edit">
+      <Link href={`/dashboard/announcements/${announcement.id}/edit`} style={{ ...styles.btn, color: 'var(--info)', display: 'flex', alignItems: 'center' }} title="Edit" onClick={(e) => e.stopPropagation()}>
         <Pencil size={15} />
       </Link>
 
       <button 
         style={styles.btn} 
-        onClick={handleToggleActive} 
+        onClick={(e) => { e.stopPropagation(); handleToggleActive(); }} 
         title={announcement.status === 'PUBLISHED' ? 'Unpublish' : 'Publish'}
       >
         {announcement.status === 'PUBLISHED' ? <XCircle size={16} color="var(--warning)" /> : <CheckCircle size={16} color="var(--success)" />}
       </button>
 
-      <button style={styles.btn} onClick={handlePin} title="Toggle Pin">
+      <button style={styles.btn} onClick={(e) => { e.stopPropagation(); handlePin(); }} title="Toggle Pin">
         <Pin size={16} color={announcement.isPinned ? 'var(--warning)' : 'var(--text-muted)'} />
       </button>
 
-      <button style={styles.btn} onClick={handleDelete} title="Delete">
+      <button style={styles.btn} onClick={(e) => { e.stopPropagation(); handleDelete(); }} title="Delete">
         <Trash2 size={16} color="var(--danger)" />
       </button>
     </div>

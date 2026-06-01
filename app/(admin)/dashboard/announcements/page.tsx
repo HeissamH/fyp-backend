@@ -5,11 +5,13 @@ import { useAnnouncements } from './query';
 import { DataTable } from '@/components/admin/ui/DataTable';
 import { DataTableSkeleton } from '@/components/admin/ui/DataTableSkeleton';
 import { announcementsColumns } from '@/components/admin/announcements/AnnouncementsColumns';
+import { AnnouncementDetailModal } from '@/components/admin/ui/AnnouncementDetailModal';
 import Link from 'next/link';
 
 export default function AnnouncementsPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
+  const [selectedAnnouncementId, setSelectedAnnouncementId] = useState<string | null>(null);
   
   const { data, isLoading, isError } = useAnnouncements({ page, pageSize: 20, search });
 
@@ -56,12 +58,20 @@ export default function AnnouncementsPage() {
         <DataTable
           columns={announcementsColumns()}
           data={data?.data || []}
+          onRowClick={(row) => setSelectedAnnouncementId(row.id)}
           pagination={{
             page,
             total: data?.meta?.total || 0,
             pageSize: 20,
             onPageChange: setPage
           }}
+        />
+      )}
+
+      {selectedAnnouncementId && (
+        <AnnouncementDetailModal
+          announcementId={selectedAnnouncementId}
+          onClose={() => setSelectedAnnouncementId(null)}
         />
       )}
     </div>

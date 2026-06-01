@@ -10,13 +10,14 @@ import {
   media,
   userRoles,
 } from "@/lib/db/schema";
-import { eq, and, or, isNull, desc, ilike, inArray, sql } from "drizzle-orm";
+import { eq, and, or, isNull, desc, ilike, inArray, sql, ne } from "drizzle-orm";
 import { withAuth, withPermission } from "@/lib/auth/middleware";
 import { successResponse, errorResponse, paginatedResponse } from "@/lib/utils/api-response";
 import { parsePagination } from "@/lib/utils/pagination";
 import { createAnnouncementSchema } from "@/lib/validators/announcements";
 import { generateSlug } from "@/lib/utils/slug";
 import { logAction } from "@/lib/audit";
+import { notifyUsers } from "@/lib/notifications/send";
 
 export const GET = withAuth(async (req, ctx) => {
   const url = new URL(req.url);
@@ -226,6 +227,22 @@ export const POST = withPermission(async (req, ctx) => {
     entityId: created.id,
     metadata: { title: d.title, type: d.type, status: d.status },
   });
+
+  if (isPublishing) {
+    const targetUsers = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(ne(users.id, ctx.user.userId));
+
+    if (targetUsers.length > 0) {
+      await notifyUsers(targetUsers.map((u) => u.id), {
+        title: "New Announcement",
+        body: d.title,
+        type: "announcement",
+        targetId: created.id,
+      });
+    }
+  }
 
   return successResponse(created, "Announcement created successfully", 201);
 }, "announcement.create");

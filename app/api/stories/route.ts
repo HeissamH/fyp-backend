@@ -1,12 +1,13 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { stories, storyViews, users, colleges, media } from "@/lib/db/schema";
-import { eq, and, isNull, gt, desc } from "drizzle-orm";
+import { eq, and, isNull, gt, desc, ne } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { withAuth, withPermission } from "@/lib/auth/middleware";
 import { successResponse, errorResponse } from "@/lib/utils/api-response";
 import { createStorySchema } from "@/lib/validators/stories";
 import { logAction } from "@/lib/audit";
+import { notifyUsers } from "@/lib/notifications/send";
 
 export const GET = withAuth(async (_req, ctx) => {
   const userId = ctx.user.userId;
@@ -126,6 +127,20 @@ export const POST = withPermission(async (req, ctx) => {
       entity: "STORY",
       entityId: created.id,
     });
+
+    const targetUsers = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(and(eq(users.collegeId, resolvedCollegeId), ne(users.id, ctx.user.userId)));
+
+    if (targetUsers.length > 0) {
+      await notifyUsers(targetUsers.map(u => u.id), {
+        title: "New Story Update",
+        body: d.caption || "A new story was posted in your college bubble. Tap to view!",
+        type: "story",
+        targetId: created.id,
+      });
+    }
 
     return successResponse(created, "Story created successfully", 201);
   } catch (error: any) {

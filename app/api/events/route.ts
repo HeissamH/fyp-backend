@@ -1,13 +1,14 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { events, eventRsvps, users, eventCategories, media } from "@/lib/db/schema";
-import { eq, and, or, isNull, gt, desc, sql, count } from "drizzle-orm";
+import { eq, and, or, isNull, gt, desc, sql, count, ne } from "drizzle-orm";
 import { withAuth, withPermission } from "@/lib/auth/middleware";
 import { successResponse, errorResponse, paginatedResponse } from "@/lib/utils/api-response";
 import { parsePagination } from "@/lib/utils/pagination";
 import { createEventSchema } from "@/lib/validators/events";
 import { generateSlug } from "@/lib/utils/slug";
 import { logAction } from "@/lib/audit";
+import { notifyUsers } from "@/lib/notifications/send";
 
 export const GET = withAuth(async (req) => {
   const url = new URL(req.url);
@@ -138,6 +139,22 @@ export const POST = withPermission(async (req, ctx) => {
     entityId: created.id,
     metadata: { title: d.title, status: d.status },
   });
+
+  if (isPublishing) {
+    const targetUsers = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(ne(users.id, ctx.user.userId));
+
+    if (targetUsers.length > 0) {
+      await notifyUsers(targetUsers.map((u) => u.id), {
+        title: "Upcoming Event",
+        body: d.title,
+        type: "event",
+        targetId: created.id,
+      });
+    }
+  }
 
   return successResponse(created, "Event created successfully", 201);
 }, "event.create");

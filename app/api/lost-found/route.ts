@@ -1,11 +1,12 @@
 import { db } from "@/lib/db";
 import { lostFoundItems, lostFoundMedia, users, categories, media } from "@/lib/db/schema";
-import { eq, and, isNull, desc, sql, inArray } from "drizzle-orm";
+import { eq, and, isNull, desc, sql, inArray, ne } from "drizzle-orm";
 import { withAuth } from "@/lib/auth/middleware";
 import { successResponse, errorResponse } from "@/lib/utils/api-response";
 import { parsePagination } from "@/lib/utils/pagination";
 import { createLostFoundSchema } from "@/lib/validators/lost-found";
 import { logAction } from "@/lib/audit";
+import { notifyUsers } from "@/lib/notifications/send";
 
 
 
@@ -141,6 +142,20 @@ export const POST = withAuth(async (req, ctx) => {
     entityId: created.id,
     metadata: { type: d.type, anonymous: d.isAnonymous },
   });
+
+  const targetUsers = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(ne(users.id, ctx.user.userId));
+
+  if (targetUsers.length > 0) {
+    await notifyUsers(targetUsers.map((u) => u.id), {
+      title: "Lost & Found Alert",
+      body: d.title,
+      type: "lost_found",
+      targetId: created.id,
+    });
+  }
 
   return successResponse(created, "Item reported successfully", 201);
 });

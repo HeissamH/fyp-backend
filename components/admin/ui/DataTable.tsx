@@ -10,6 +10,7 @@ import {
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
+  onRowClick?: (row: TData) => void;
   pagination?: {
     page: number;
     total: number;
@@ -21,6 +22,7 @@ interface DataTableProps<TData, TValue> {
 export function DataTable<TData, TValue>({
   columns,
   data,
+  onRowClick,
   pagination,
 }: DataTableProps<TData, TValue>) {
   const table = useReactTable({
@@ -54,7 +56,20 @@ export function DataTable<TData, TValue>({
           <tbody>
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
-                <tr key={row.id} style={styles.tr}>
+                <tr
+                  key={row.id}
+                  style={{
+                    ...styles.tr,
+                    cursor: onRowClick ? 'pointer' : undefined,
+                  }}
+                  onClick={() => onRowClick?.(row.original)}
+                  onMouseEnter={(e) => {
+                    if (onRowClick) (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--surface-2)';
+                  }}
+                  onMouseLeave={(e) => {
+                    if (onRowClick) (e.currentTarget as HTMLElement).style.backgroundColor = '';
+                  }}
+                >
                   {row.getVisibleCells().map((cell) => (
                     <td key={cell.id} style={styles.td}>
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}

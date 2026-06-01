@@ -12,8 +12,18 @@ export default function FeedbackPage() {
   const { mutate: updateStatus } = useUpdateFeedbackStatus();
 
   const columns: ColumnDef<any>[] = [
-    { accessorKey: 'category', header: 'Category' },
-    { accessorKey: 'content', header: 'Feedback', cell: ({ row }) => <div style={{ maxWidth: '400px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.original.content}</div> },
+    { accessorKey: 'categoryName', header: 'Category' },
+    { accessorKey: 'subject', header: 'Subject' },
+    {
+      accessorKey: 'description',
+      header: 'Feedback',
+      cell: ({ row }) => (
+        <div style={{ maxWidth: '400px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {row.original.description}
+        </div>
+      ),
+    },
+    { accessorKey: 'userName', header: 'Submitted by' },
     { accessorKey: 'status', header: 'Status', cell: ({ row }) => {
        const s = row.original.status;
        return <Badge variant={s === 'PENDING' ? 'warning' : s === 'REVIEWED' ? 'info' : 'success'}>{s}</Badge>;

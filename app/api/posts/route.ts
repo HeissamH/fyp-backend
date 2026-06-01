@@ -6,6 +6,8 @@ import { successResponse, errorResponse, paginatedResponse } from "@/lib/utils/a
 import { parsePagination } from "@/lib/utils/pagination";
 import { createPostSchema } from "@/lib/validators/posts";
 import { logAction } from "@/lib/audit";
+import { after } from "next/server";
+import { notifyPostPublished } from "@/lib/notifications/notify-post-published";
 import {
   getActiveGroupIdsForUser,
   getUserPostProfile,
@@ -135,6 +137,10 @@ export const POST = withPermission(async (req, ctx) => {
     entityId: created.id,
     metadata: { type: d.type, status: d.status },
   });
+
+  if (isPublishing) {
+    after(() => notifyPostPublished(created.id));
+  }
 
   return successResponse(created, "Post created successfully", 201);
 }, "post.create");

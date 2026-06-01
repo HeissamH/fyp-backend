@@ -26,3 +26,6 @@ export * from "./feedback";
 export * from "./groups";
 export * from "./group-memberships";
 export * from "./posts";
+export * from "./notification-tokens";
+export * from "./notifications";
+export * from "./notification-preferences";

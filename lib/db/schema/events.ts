@@ -22,6 +22,7 @@ export const events = pgTable("events", {
   isPinned: boolean("is_pinned").default(false).notNull(),
   viewCount: integer("view_count").default(0).notNull(),
   publishedAt: timestamp("published_at"),
+  startNotifiedAt: timestamp("start_notified_at"),
   academicYearId: uuid("academic_year_id").references(() => academicYears.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

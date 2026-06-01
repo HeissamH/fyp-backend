@@ -50,6 +50,20 @@
       "when": 1778791396066,
       "tag": "0006_wakeful_union_jack",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1780270042806,
+      "tag": "0007_late_spiral",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1780276044032,
+      "tag": "0008_fine_rockslide",
+      "breakpoints": true
     }
   ]
 }

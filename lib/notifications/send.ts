@@ -62,7 +62,12 @@ export async function pushToUsers(userIds: string[], payload: NotificationPayloa
         ...(payload.targetId ? { targetId: payload.targetId } : {}),
         ...(payload.targetType ? { targetType: payload.targetType } : {}),
       },
-      android: { priority: "high" },
+      android: {
+        priority: "high",
+        notification: {
+          channelId: "high_importance_channel",
+        },
+      },
     });
 
     response.responses.forEach((res, idx) => {

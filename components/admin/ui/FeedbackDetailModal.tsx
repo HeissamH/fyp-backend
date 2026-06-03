@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, CheckSquare, Clock, Eye, MessageSquarePlus, Tag, User, Mail, Calendar1 } from 'lucide-react';
+import { X, CheckSquare, Clock, Eye, MessageSquarePlus, Tag, User, Mail, Calendar } from 'lucide-react';
 
 interface FeedbackDetailModalProps {
   item: {
@@ -88,7 +88,7 @@ export function FeedbackDetailModal({
           {item.userEmail && (
             <span style={metaChip}><Mail size={14} /> {item.userEmail}</span>
           )}
-          <span style={metaChip}><Calendar1 size={14} /> {formatDate(item.createdAt)}</span>
+          <span style={metaChip}><Calendar size={14} /> {formatDate(item.createdAt)}</span>
         </div>
 
         {/* Message Content */}

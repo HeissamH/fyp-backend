@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, CheckSquare, Clock, Eye, MessageSquarePlus } from 'lucide-react';
-import { Badge } from './Badge';
+import { X, CheckSquare, Clock, Eye, MessageSquarePlus, Tag, User, Mail, Calendar1 } from 'lucide-react';
 
 interface FeedbackDetailModalProps {
   item: {
@@ -31,12 +30,7 @@ export function FeedbackDetailModal({
   isPending = false,
   isSavingComment = false,
 }: FeedbackDetailModalProps) {
-  const [notes, setNotes] = useState(false ? '' : ''); // we want this to be empty to start if they are writing a NEW note, OR populate it. The requirements say: "Show the existing saved adminNotes in a styled read-only block above the textarea (so the admin sees what was previously written before editing)." So let's keep it populated by default for easy editing.
-  // Wait, let's just initialize it with item.adminNotes or empty.
   const [notesState, setNotesState] = useState(item.adminNotes || '');
-
-  const statusVariant = (s: string) =>
-    s === 'PENDING' ? 'warning' : s === 'REVIEWED' ? 'info' : 'success';
 
   const formatDate = (iso: string) => {
     const d = new Date(iso);
@@ -49,14 +43,34 @@ export function FeedbackDetailModal({
     });
   };
 
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'RESOLVED': return { bg: 'rgba(46, 160, 67, 0.15)', text: '#3fb950', border: 'rgba(46, 160, 67, 0.4)' };
+      case 'REVIEWED': return { bg: 'rgba(56, 139, 253, 0.15)', text: '#58a6ff', border: 'rgba(56, 139, 253, 0.4)' };
+      default: return { bg: 'rgba(210, 153, 34, 0.15)', text: '#d29922', border: 'rgba(210, 153, 34, 0.4)' };
+    }
+  };
+  
+  const statusColors = getStatusColor(item.status);
+
   return (
     <div style={overlay} onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div style={modal}>
         {/* Header */}
-        <div style={header}>
-          <div>
-            <p style={labelStyle}>FEEDBACK DETAIL</p>
-            <h2 style={titleStyle}>{item.subject}</h2>
+        <div style={headerWrapper}>
+          <div style={{ flex: 1 }}>
+            <p style={labelStyle}>FEEDBACK DETAILS</p>
+            <div style={titleRow}>
+              <h2 style={titleStyle}>{item.subject}</h2>
+              <span style={{
+                ...badgeStyle, 
+                backgroundColor: statusColors.bg, 
+                color: statusColors.text, 
+                borderColor: statusColors.border 
+              }}>
+                {item.status}
+              </span>
+            </div>
           </div>
           <button onClick={onClose} style={closeBtn} aria-label="Close">
             <X size={18} />
@@ -66,33 +80,30 @@ export function FeedbackDetailModal({
         {/* Meta row */}
         <div style={metaRow}>
           {item.categoryName && (
-            <span style={metaChip}>📂 {item.categoryName}</span>
+            <span style={metaChip}><Tag size={14} /> {item.categoryName}</span>
           )}
           {item.userName && (
-            <span style={metaChip}>👤 {item.userName}</span>
+            <span style={metaChip}><User size={14} /> {item.userName}</span>
           )}
           {item.userEmail && (
-            <span style={metaChip}>✉️ {item.userEmail}</span>
+            <span style={metaChip}><Mail size={14} /> {item.userEmail}</span>
           )}
-          <span style={metaChip}>🕐 {formatDate(item.createdAt)}</span>
-          <Badge variant={statusVariant(item.status)}>{item.status}</Badge>
+          <span style={metaChip}><Calendar1 size={14} /> {formatDate(item.createdAt)}</span>
         </div>
 
-        <hr style={divider} />
-
-        {/* Description */}
-        <div style={section}>
-          <p style={sectionLabel}>Message</p>
-          <div style={descriptionBox}>{item.description}</div>
+        {/* Message Content */}
+        <div style={messageContainer}>
+          <p style={sectionLabel}>User Message</p>
+          <div style={messageBox}>{item.description}</div>
         </div>
 
-        {/* Admin notes */}
-        <div style={section}>
-          <p style={sectionLabel}>Admin Notes (optional)</p>
+        {/* Admin actions / Notes */}
+        <div style={notesContainer}>
+          <p style={sectionLabel}>Admin Notes</p>
           {item.adminNotes && (
-            <div style={{ ...descriptionBox, marginBottom: '12px', backgroundColor: 'var(--primary-light, rgba(0, 0, 0, 0.03))', border: '1px solid var(--border)' }}>
-              <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--primary)', margin: '0 0 4px 0' }}>Current Note:</p>
-              {item.adminNotes}
+            <div style={existingNoteBox}>
+              <p style={existingNoteLabel}>Current Note:</p>
+              <p style={{ margin: 0, lineHeight: 1.5 }}>{item.adminNotes}</p>
             </div>
           )}
           <textarea
@@ -104,48 +115,49 @@ export function FeedbackDetailModal({
           />
         </div>
 
-        {/* Actions */}
-        <div style={actions}>
-          {onSaveComment && (
-            <button
-              style={{ ...actionBtn, borderColor: 'var(--primary)', color: 'var(--primary)', marginRight: 'auto' }}
-              disabled={isPending || isSavingComment || !notesState.trim()}
-              onClick={() => onSaveComment(item.id, notesState)}
-            >
-              <MessageSquarePlus size={14} /> {isSavingComment ? 'Saving...' : 'Save Comment'}
-            </button>
-          )}
+        {/* Actions Toolbar */}
+        <div style={actionsToolbar}>
+          <div style={{ flex: 1 }}>
+            {onSaveComment && (
+              <button
+                style={primaryBtn}
+                disabled={isPending || isSavingComment || !notesState.trim()}
+                onClick={() => onSaveComment(item.id, notesState)}
+              >
+                <MessageSquarePlus size={15} /> {isSavingComment ? 'Saving...' : 'Save Draft'}
+              </button>
+            )}
+          </div>
           
-          {item.status !== 'REVIEWED' && (
-            <button
-              style={{ ...actionBtn, borderColor: 'var(--info, #79c0ff)', color: 'var(--info, #79c0ff)' }}
-              disabled={isPending || isSavingComment}
-              onClick={() => onUpdateStatus(item.id, 'REVIEWED', notesState || undefined)}
-            >
-              <Eye size={14} /> Mark Reviewed
-            </button>
-          )}
-          {item.status !== 'RESOLVED' && (
-            <button
-              style={{ ...actionBtn, borderColor: 'var(--success)', color: 'var(--success)' }}
-              disabled={isPending || isSavingComment}
-              onClick={() => onUpdateStatus(item.id, 'RESOLVED', notesState || undefined)}
-            >
-              <CheckSquare size={14} /> Mark Resolved
-            </button>
-          )}
-          {item.status !== 'PENDING' && (
-            <button
-              style={{ ...actionBtn, borderColor: 'var(--warning, #e3b341)', color: 'var(--warning, #e3b341)' }}
-              disabled={isPending || isSavingComment}
-              onClick={() => onUpdateStatus(item.id, 'PENDING', notesState || undefined)}
-            >
-              <Clock size={14} /> Reopen
-            </button>
-          )}
-          <button onClick={onClose} style={cancelBtnStyle} disabled={isPending || isSavingComment}>
-            Close
-          </button>
+          <div style={rightActions}>
+            {item.status !== 'PENDING' && (
+              <button
+                style={ghostBtnWarning}
+                disabled={isPending || isSavingComment}
+                onClick={() => onUpdateStatus(item.id, 'PENDING', notesState || undefined)}
+              >
+                <Clock size={15} /> Reopen
+              </button>
+            )}
+            {item.status !== 'REVIEWED' && (
+              <button
+                style={ghostBtnInfo}
+                disabled={isPending || isSavingComment}
+                onClick={() => onUpdateStatus(item.id, 'REVIEWED', notesState || undefined)}
+              >
+                <Eye size={15} /> Mark Reviewed
+              </button>
+            )}
+            {item.status !== 'RESOLVED' && (
+              <button
+                style={solidBtnSuccess}
+                disabled={isPending || isSavingComment}
+                onClick={() => onUpdateStatus(item.id, 'RESOLVED', notesState || undefined)}
+              >
+                <CheckSquare size={15} /> Resolve
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -156,106 +168,123 @@ export function FeedbackDetailModal({
 
 const overlay: React.CSSProperties = {
   position: 'fixed', inset: 0,
-  backgroundColor: 'rgba(0,0,0,0.7)',
+  backgroundColor: 'rgba(0,0,0,0.65)',
+  backdropFilter: 'blur(4px)',
   display: 'flex', alignItems: 'center', justifyContent: 'center',
   zIndex: 300, padding: '16px',
 };
 
 const modal: React.CSSProperties = {
-  backgroundColor: 'var(--surface)',
-  border: '1px solid var(--border)',
-  borderRadius: 'var(--radius-lg)',
-  padding: '28px',
-  width: '100%', maxWidth: '580px',
-  boxShadow: '0 12px 48px rgba(0,0,0,0.5)',
+  backgroundColor: 'var(--surface, #1e1e24)',
+  border: '1px solid rgba(255, 255, 255, 0.1)',
+  borderRadius: '16px',
+  padding: '24px',
+  width: '100%', maxWidth: '640px',
+  boxShadow: '0 24px 48px rgba(0,0,0,0.6)',
   maxHeight: '90vh',
   overflowY: 'auto',
+  display: 'flex', flexDirection: 'column', gap: '20px',
 };
 
-const header: React.CSSProperties = {
-  display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
-  marginBottom: '16px', gap: '12px',
+const headerWrapper: React.CSSProperties = {
+  display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px',
 };
 
-const labelStyle: React.CSSProperties = {
-  fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em',
-  color: 'var(--primary)', margin: '0 0 4px 0', textTransform: 'uppercase',
+const titleRow: React.CSSProperties = {
+  display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap',
 };
 
 const titleStyle: React.CSSProperties = {
-  fontSize: '18px', fontWeight: 700, color: 'var(--text)',
-  margin: 0, lineHeight: 1.3,
+  fontSize: '20px', fontWeight: 700, color: '#f1f1f1', margin: 0, lineHeight: 1.3,
+};
+
+const badgeStyle: React.CSSProperties = {
+  fontSize: '11px', fontWeight: 700, padding: '4px 10px', 
+  borderRadius: '20px', border: '1px solid', textTransform: 'uppercase', letterSpacing: '0.05em'
+};
+
+const labelStyle: React.CSSProperties = {
+  fontSize: '11px', fontWeight: 600, letterSpacing: '0.1em',
+  color: 'var(--text-muted, #8b949e)', margin: '0 0 6px 0', textTransform: 'uppercase',
 };
 
 const closeBtn: React.CSSProperties = {
-  background: 'var(--surface-2)', border: '1px solid var(--border)',
-  borderRadius: '8px', width: '32px', height: '32px',
+  background: 'transparent', border: 'none',
+  width: '32px', height: '32px', borderRadius: '50%',
   display: 'flex', alignItems: 'center', justifyContent: 'center',
-  cursor: 'pointer', color: 'var(--text-muted)', flexShrink: 0,
+  cursor: 'pointer', color: '#8b949e', flexShrink: 0, transition: 'background 0.2s'
 };
 
 const metaRow: React.CSSProperties = {
-  display: 'flex', flexWrap: 'wrap', gap: '8px',
-  alignItems: 'center', marginBottom: '16px',
+  display: 'flex', flexWrap: 'wrap', gap: '12px',
+  paddingBottom: '20px', borderBottom: '1px solid rgba(255,255,255,0.08)',
 };
 
 const metaChip: React.CSSProperties = {
-  fontSize: '12px', color: 'var(--text-muted)',
-  backgroundColor: 'var(--surface-2)',
-  border: '1px solid var(--border)',
-  borderRadius: '99px',
-  padding: '2px 10px',
+  display: 'inline-flex', alignItems: 'center', gap: '6px',
+  fontSize: '13px', color: '#a1aab5',
+  fontWeight: 500,
 };
 
-const divider: React.CSSProperties = {
-  border: 'none', borderTop: '1px solid var(--border)', margin: '0 0 20px',
-};
-
-const section: React.CSSProperties = {
-  marginBottom: '20px',
+const messageContainer: React.CSSProperties = {
+  display: 'flex', flexDirection: 'column', gap: '8px',
 };
 
 const sectionLabel: React.CSSProperties = {
-  fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)',
-  textTransform: 'uppercase', letterSpacing: '0.06em',
-  margin: '0 0 8px 0',
+  fontSize: '14px', fontWeight: 600, color: '#e6edf3', margin: 0,
 };
 
-const descriptionBox: React.CSSProperties = {
-  backgroundColor: 'var(--surface-2)',
-  border: '1px solid var(--border)',
-  borderRadius: 'var(--radius)',
-  padding: '14px 16px',
-  fontSize: '14px', color: 'var(--text)',
-  lineHeight: 1.6, whiteSpace: 'pre-wrap',
-  minHeight: '80px',
+const messageBox: React.CSSProperties = {
+  backgroundColor: 'rgba(255, 255, 255, 0.03)',
+  border: '1px solid rgba(255,255,255,0.08)',
+  borderRadius: '12px', padding: '16px',
+  fontSize: '15px', color: '#c9d1d9', lineHeight: 1.6, whiteSpace: 'pre-wrap',
+};
+
+const notesContainer: React.CSSProperties = {
+  display: 'flex', flexDirection: 'column', gap: '8px',
+  backgroundColor: 'rgba(88, 166, 255, 0.03)',
+  border: '1px solid rgba(88, 166, 255, 0.1)',
+  borderRadius: '12px', padding: '16px'
+};
+
+const existingNoteBox: React.CSSProperties = {
+  borderLeft: '3px solid #58a6ff',
+  paddingLeft: '12px', marginBottom: '12px',
+  color: '#c9d1d9', fontSize: '14px',
+};
+
+const existingNoteLabel: React.CSSProperties = {
+  fontSize: '12px', fontWeight: 600, color: '#58a6ff', margin: '0 0 4px 0', textTransform: 'uppercase'
 };
 
 const textareaStyle: React.CSSProperties = {
   width: '100%', boxSizing: 'border-box',
-  backgroundColor: 'var(--surface-2)',
-  border: '1px solid var(--border)',
-  borderRadius: 'var(--radius)',
-  padding: '10px 14px',
-  fontSize: '14px', color: 'var(--text)',
-  resize: 'vertical', outline: 'none', fontFamily: 'inherit',
+  backgroundColor: 'rgba(0,0,0,0.2)',
+  border: '1px solid rgba(255,255,255,0.1)',
+  borderRadius: '8px', padding: '12px 14px',
+  fontSize: '14px', color: '#e6edf3', resize: 'vertical', 
+  outline: 'none', fontFamily: 'inherit',
+  transition: 'border-color 0.2s', minHeight: '80px'
 };
 
-const actions: React.CSSProperties = {
-  display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'flex-end',
-  paddingTop: '4px',
+const actionsToolbar: React.CSSProperties = {
+  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+  gap: '12px', paddingTop: '16px', flexWrap: 'wrap',
 };
 
-const actionBtn: React.CSSProperties = {
+const rightActions: React.CSSProperties = {
+  display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap'
+};
+
+const btnBase: React.CSSProperties = {
   display: 'inline-flex', alignItems: 'center', gap: '6px',
-  padding: '8px 16px', background: 'transparent',
-  border: '1px solid', borderRadius: 'var(--radius)',
+  padding: '8px 16px', borderRadius: '8px',
   fontSize: '13px', fontWeight: 600, cursor: 'pointer',
-  transition: 'opacity 0.15s',
+  transition: 'all 0.2s', border: 'none'
 };
 
-const cancelBtnStyle: React.CSSProperties = {
-  padding: '8px 16px', background: 'transparent',
-  border: '1px solid var(--border)', borderRadius: 'var(--radius)',
-  color: 'var(--text-muted)', cursor: 'pointer', fontSize: '13px', fontWeight: 500,
-};
+const primaryBtn = { ...btnBase, background: 'rgba(88, 166, 255, 0.15)', color: '#58a6ff', border: '1px solid rgba(88, 166, 255, 0.3)' };
+const solidBtnSuccess = { ...btnBase, background: '#238636', color: '#ffffff' };
+const ghostBtnInfo = { ...btnBase, background: 'transparent', color: '#58a6ff', border: '1px solid rgba(88,166,255,0.4)' };
+const ghostBtnWarning = { ...btnBase, background: 'transparent', color: '#d29922', border: '1px solid rgba(210,153,34,0.4)' };

@@ -43,7 +43,8 @@ export function useUpdateUser() {
 export function useAssignUserRole() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ userId, roleId }: { userId: string; roleId: string }) => assignUserRole(userId, roleId),
+    mutationFn: ({ userId, roleId, collegeId }: { userId: string; roleId: string; collegeId?: string }) =>
+      assignUserRole(userId, roleId, collegeId),
     onSuccess: (_, v) => {
       qc.invalidateQueries({ queryKey: ['users'] });
       qc.invalidateQueries({ queryKey: ['users', v.userId] });

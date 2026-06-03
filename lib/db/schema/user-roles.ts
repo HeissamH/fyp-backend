@@ -1,6 +1,7 @@
 import { pgTable, uuid, timestamp, unique, index } from "drizzle-orm/pg-core";
 import { users } from "./users";
 import { roles } from "./roles";
+import { colleges } from "./colleges";
 import { relations } from "drizzle-orm";
 
 export const userRoles = pgTable(
@@ -14,6 +15,8 @@ export const userRoles = pgTable(
       .notNull()
       .references(() => roles.id, { onDelete: "cascade" }),
     assignedBy: uuid("assigned_by").references(() => users.id),
+    // College context for college-scoped roles (e.g. DARUSO leader, college rep)
+    collegeId: uuid("college_id").references(() => colleges.id),
     assignedAt: timestamp("assigned_at").defaultNow().notNull(),
     revokedAt: timestamp("revoked_at"),
   },

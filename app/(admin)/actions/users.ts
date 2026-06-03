@@ -65,11 +65,11 @@ export async function updateUser(
   return json;
 }
 
-export async function assignUserRole(userId: string, roleId: string) {
+export async function assignUserRole(userId: string, roleId: string, collegeId?: string) {
   const res = await fetch(`${BASE_URL}/users/${userId}/roles`, {
     method: 'POST',
     headers: await getAuthHeaders(),
-    body: JSON.stringify({ roleId }),
+    body: JSON.stringify({ roleId, ...(collegeId ? { collegeId } : {}) }),
     cache: 'no-store',
   });
   const json = await res.json();

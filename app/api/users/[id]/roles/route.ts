@@ -15,6 +15,7 @@ export const POST = withPermission(async (req: NextRequest, ctx) => {
   if (!validation.success) return errorResponse("Validation failed", 400, validation.error.format());
 
   const roleIdToAssign = validation.data.roleId;
+  const collegeIdToAssign = validation.data.collegeId ?? null;
 
   const [roleRow] = await db.select().from(roles).where(eq(roles.id, roleIdToAssign)).limit(1);
   if (!roleRow) return errorResponse("Role not found", 404);
@@ -38,12 +39,14 @@ export const POST = withPermission(async (req: NextRequest, ctx) => {
         revokedAt: null,
         assignedBy: ctx.user.userId,
         assignedAt: new Date(),
+        collegeId: collegeIdToAssign,
       })
       .where(eq(userRoles.id, row.id));
   } else {
     await db.insert(userRoles).values({
       userId: targetUserId,
       roleId: roleIdToAssign,
+      collegeId: collegeIdToAssign,
       assignedBy: ctx.user.userId,
     });
   }

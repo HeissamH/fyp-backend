@@ -64,6 +64,13 @@
       "when": 1780276044032,
       "tag": "0008_fine_rockslide",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1780443138210,
+      "tag": "0009_jazzy_gamma_corps",
+      "breakpoints": true
     }
   ]
 }

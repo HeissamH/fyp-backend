@@ -9,10 +9,14 @@ import { Badge } from '@/components/admin/ui/Badge';
 import {
   ArrowLeft, Save, Loader2, User, ShieldCheck, Calendar,
   Activity, Megaphone, CalendarDays, LogIn, FilePen, Trash2,
-  PlusCircle, Clock, Globe, FileText, Image as ImageIcon,
+  PlusCircle, Clock, Globe, FileText, Image as ImageIcon, Building2,
 } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
+import { useColleges } from '@/app/(admin)/dashboard/platform/query';
+
+// Roles that represent a college — require a college to be specified on assignment
+const COLLEGE_SCOPED_ROLES = ['daruso_leader', 'college_rep', 'college_leader'];
 
 // ── Action icon & label helpers ──────────────────────────────────────────────
 function getActionMeta(action: string) {
@@ -204,25 +208,36 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
   const { id } = use(params);
   const { data, isLoading } = useUser(id);
   const { data: rolesData } = useRoles();
+  const { data: collegesData } = useColleges();
   const { mutate: updateUser, isPending } = useUpdateUser();
   const { mutate: assignRole, isPending: assigning } = useAssignUserRole();
   const { mutate: revokeRole, isPending: revoking } = useRevokeUserRole();
   const [roleToAddId, setRoleToAddId] = useState('');
+  const [roleCollegeId, setRoleCollegeId] = useState('');
 
   const user = data?.data;
   const roles = rolesData?.data || [];
+  const colleges = collegesData?.data || [];
   const assignedRoles = (user?.roles || []) as { id: string; name: string }[];
   const availableRoles = roles.filter((r: { id: string }) => !assignedRoles.some((a) => a.id === r.id));
   const rolesBusy = assigning || revoking;
 
+  // Determine if the currently selected role requires a college to be specified
+  const selectedRoleObj = roles.find((r: { id: string; name: string }) => r.id === roleToAddId);
+  const requiresCollege = selectedRoleObj
+    ? COLLEGE_SCOPED_ROLES.some(keyword => selectedRoleObj.name.toLowerCase().includes(keyword))
+    : false;
+
   const handleAddRole = () => {
     if (!roleToAddId) return toast.error('Choose a role to add');
+    if (requiresCollege && !roleCollegeId) return toast.error('This role requires a college to be specified');
     assignRole(
-      { userId: id, roleId: roleToAddId },
+      { userId: id, roleId: roleToAddId, collegeId: requiresCollege ? roleCollegeId : undefined },
       {
         onSuccess: () => {
           toast.success('Role assigned');
           setRoleToAddId('');
+          setRoleCollegeId('');
         },
         onError: (err: unknown) =>
           toast.error(err instanceof Error ? err.message : 'Failed to assign role'),
@@ -330,7 +345,7 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
                 <select
                   style={selectStyle}
                   value={roleToAddId}
-                  onChange={(e) => setRoleToAddId(e.target.value)}
+                  onChange={(e) => { setRoleToAddId(e.target.value); setRoleCollegeId(''); }}
                 >
                   <option value="">— Select role —</option>
                   {availableRoles.map((r: any) => (
@@ -339,6 +354,28 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
                     </option>
                   ))}
                 </select>
+
+                {/* Conditionally show college picker for college-scoped roles */}
+                {requiresCollege && (
+                  <div style={{ marginTop: '10px' }}>
+                    <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--warning, #d29922)' }}>
+                      <Building2 size={13} /> College for this role *
+                    </label>
+                    <select
+                      style={{ ...selectStyle, borderColor: roleCollegeId ? 'var(--border)' : 'var(--warning, #d29922)' }}
+                      value={roleCollegeId}
+                      onChange={(e) => setRoleCollegeId(e.target.value)}
+                    >
+                      <option value="">— Select college —</option>
+                      {colleges.map((c: any) => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                    <p style={{ margin: '4px 0 0', fontSize: '11px', color: 'var(--text-muted)' }}>
+                      This college will be used as the story bubble for this user.
+                    </p>
+                  </div>
+                )}
               </div>
               <button
                 type="button"

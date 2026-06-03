@@ -35,3 +35,25 @@ export async function updateFeedbackStatus(id: string, status: 'PENDING' | 'REVI
   if (!res.ok) throw new Error(json.message || 'Failed to update feedback status');
   return json;
 }
+
+export async function getAdminFeedbackById(id: string) {
+  const res = await fetch(`${BASE_URL}/admin/feedback/${id}`, {
+    headers: await getAuthHeaders(),
+    cache: 'no-store',
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.message || 'Failed to fetch feedback item');
+  return json;
+}
+
+export async function saveAdminComment(id: string, adminNotes: string) {
+  const res = await fetch(`${BASE_URL}/admin/feedback/${id}`, {
+    method: 'PUT',
+    headers: await getAuthHeaders(),
+    body: JSON.stringify({ adminNotes }),
+    cache: 'no-store',
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.message || 'Failed to save admin comment');
+  return json;
+}

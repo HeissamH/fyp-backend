@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, CheckSquare, Clock, Eye } from 'lucide-react';
+import { X, CheckSquare, Clock, Eye, MessageSquarePlus } from 'lucide-react';
 import { Badge } from './Badge';
 
 interface FeedbackDetailModalProps {
@@ -18,16 +18,22 @@ interface FeedbackDetailModalProps {
   };
   onClose: () => void;
   onUpdateStatus: (id: string, status: 'PENDING' | 'REVIEWED' | 'RESOLVED', adminNotes?: string) => void;
+  onSaveComment?: (id: string, adminNotes: string) => void;
   isPending?: boolean;
+  isSavingComment?: boolean;
 }
 
 export function FeedbackDetailModal({
   item,
   onClose,
   onUpdateStatus,
+  onSaveComment,
   isPending = false,
+  isSavingComment = false,
 }: FeedbackDetailModalProps) {
-  const [notes, setNotes] = useState(item.adminNotes || '');
+  const [notes, setNotes] = useState(false ? '' : ''); // we want this to be empty to start if they are writing a NEW note, OR populate it. The requirements say: "Show the existing saved adminNotes in a styled read-only block above the textarea (so the admin sees what was previously written before editing)." So let's keep it populated by default for easy editing.
+  // Wait, let's just initialize it with item.adminNotes or empty.
+  const [notesState, setNotesState] = useState(item.adminNotes || '');
 
   const statusVariant = (s: string) =>
     s === 'PENDING' ? 'warning' : s === 'REVIEWED' ? 'info' : 'success';
@@ -83,10 +89,16 @@ export function FeedbackDetailModal({
         {/* Admin notes */}
         <div style={section}>
           <p style={sectionLabel}>Admin Notes (optional)</p>
+          {item.adminNotes && (
+            <div style={{ ...descriptionBox, marginBottom: '12px', backgroundColor: 'var(--primary-light, rgba(0, 0, 0, 0.03))', border: '1px solid var(--border)' }}>
+              <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--primary)', margin: '0 0 4px 0' }}>Current Note:</p>
+              {item.adminNotes}
+            </div>
+          )}
           <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Add a note visible to the user..."
+            value={notesState}
+            onChange={(e) => setNotesState(e.target.value)}
+            placeholder="Add or update a note visible to the user..."
             style={textareaStyle}
             rows={3}
           />
@@ -94,11 +106,21 @@ export function FeedbackDetailModal({
 
         {/* Actions */}
         <div style={actions}>
+          {onSaveComment && (
+            <button
+              style={{ ...actionBtn, borderColor: 'var(--primary)', color: 'var(--primary)', marginRight: 'auto' }}
+              disabled={isPending || isSavingComment || !notesState.trim()}
+              onClick={() => onSaveComment(item.id, notesState)}
+            >
+              <MessageSquarePlus size={14} /> {isSavingComment ? 'Saving...' : 'Save Comment'}
+            </button>
+          )}
+          
           {item.status !== 'REVIEWED' && (
             <button
               style={{ ...actionBtn, borderColor: 'var(--info, #79c0ff)', color: 'var(--info, #79c0ff)' }}
-              disabled={isPending}
-              onClick={() => onUpdateStatus(item.id, 'REVIEWED', notes || undefined)}
+              disabled={isPending || isSavingComment}
+              onClick={() => onUpdateStatus(item.id, 'REVIEWED', notesState || undefined)}
             >
               <Eye size={14} /> Mark Reviewed
             </button>
@@ -106,8 +128,8 @@ export function FeedbackDetailModal({
           {item.status !== 'RESOLVED' && (
             <button
               style={{ ...actionBtn, borderColor: 'var(--success)', color: 'var(--success)' }}
-              disabled={isPending}
-              onClick={() => onUpdateStatus(item.id, 'RESOLVED', notes || undefined)}
+              disabled={isPending || isSavingComment}
+              onClick={() => onUpdateStatus(item.id, 'RESOLVED', notesState || undefined)}
             >
               <CheckSquare size={14} /> Mark Resolved
             </button>
@@ -115,13 +137,13 @@ export function FeedbackDetailModal({
           {item.status !== 'PENDING' && (
             <button
               style={{ ...actionBtn, borderColor: 'var(--warning, #e3b341)', color: 'var(--warning, #e3b341)' }}
-              disabled={isPending}
-              onClick={() => onUpdateStatus(item.id, 'PENDING', notes || undefined)}
+              disabled={isPending || isSavingComment}
+              onClick={() => onUpdateStatus(item.id, 'PENDING', notesState || undefined)}
             >
               <Clock size={14} /> Reopen
             </button>
           )}
-          <button onClick={onClose} style={cancelBtnStyle} disabled={isPending}>
+          <button onClick={onClose} style={cancelBtnStyle} disabled={isPending || isSavingComment}>
             Close
           </button>
         </div>

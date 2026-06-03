@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { useFeedback, useUpdateFeedbackStatus } from './query';
+import { useFeedback, useUpdateFeedbackStatus, useSaveAdminComment } from './query';
+import { MessageSquareText } from 'lucide-react';
 import { DataTable } from '@/components/admin/ui/DataTable';
 import { ColumnDef } from '@tanstack/react-table';
 import { Badge } from '@/components/admin/ui/Badge';
@@ -10,6 +11,7 @@ import { FeedbackDetailModal } from '@/components/admin/ui/FeedbackDetailModal';
 export default function FeedbackPage() {
   const { data, isLoading } = useFeedback();
   const { mutate: updateStatus, isPending } = useUpdateFeedbackStatus();
+  const { mutate: saveComment, isPending: isSavingComment } = useSaveAdminComment();
   const [selected, setSelected] = useState<any | null>(null);
 
   const handleUpdateStatus = (
@@ -22,6 +24,14 @@ export default function FeedbackPage() {
       { onSuccess: () => setSelected(null) }
     );
   };
+
+  const handleSaveComment = (id: string, adminNotes: string) => {
+    saveComment(
+      { id, adminNotes },
+      { onSuccess: () => setSelected(null) } // Or just keep it open? Better to close or show toast. Let's keep it consistent.
+    );
+  };
+
 
   const columns: ColumnDef<any>[] = [
     {
@@ -37,8 +47,11 @@ export default function FeedbackPage() {
       accessorKey: 'subject',
       header: 'Subject',
       cell: ({ row }) => (
-        <span style={{ fontWeight: 500, color: 'var(--text)' }}>
+        <span style={{ fontWeight: 500, color: 'var(--text)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
           {row.original.subject}
+          {row.original.adminNotes && (
+            <MessageSquareText size={14} color="var(--primary)" />
+          )}
         </span>
       ),
     },
@@ -126,7 +139,9 @@ export default function FeedbackPage() {
           item={selected}
           onClose={() => setSelected(null)}
           onUpdateStatus={handleUpdateStatus}
+          onSaveComment={handleSaveComment}
           isPending={isPending}
+          isSavingComment={isSavingComment}
         />
       )}
     </div>

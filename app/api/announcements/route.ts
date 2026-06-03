@@ -133,6 +133,7 @@ export const GET = withAuth(async (req, ctx) => {
       createdAt: announcements.createdAt,
       authorId: users.id,
       authorName: users.fullName,
+      authorAvatarUrl: users.avatarUrl,
       categoryId: categories.id,
       categoryName: categories.name,
       coverImageId: media.id,
@@ -158,7 +159,7 @@ export const GET = withAuth(async (req, ctx) => {
     viewCount: a.viewCount,
     publishedAt: a.publishedAt,
     createdAt: a.createdAt,
-    author: { id: a.authorId, fullName: a.authorName },
+    author: { id: a.authorId, fullName: a.authorName, avatarUrl: a.authorAvatarUrl },
     category: a.categoryId ? { id: a.categoryId, name: a.categoryName } : null,
     coverImage: a.coverImageUrl ? { id: a.coverImageId, url: a.coverImageUrl } : null,
   }));

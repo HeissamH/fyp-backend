@@ -23,6 +23,7 @@ export const GET = withAuth(async (_req, ctx) => {
       createdAt: comments.createdAt,
       authorId: users.id,
       authorName: users.fullName,
+      authorAvatarUrl: users.avatarUrl,
     })
     .from(comments)
     .leftJoin(users, eq(comments.authorId, users.id))
@@ -76,6 +77,7 @@ export const POST = withAuth(async (req, ctx) => {
       createdAt: comments.createdAt,
       authorId: users.id,
       authorName: users.fullName,
+      authorAvatarUrl: users.avatarUrl,
     })
     .from(comments)
     .leftJoin(users, eq(comments.authorId, users.id))

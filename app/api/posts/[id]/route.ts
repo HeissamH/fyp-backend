@@ -56,6 +56,7 @@ export const GET = withAuth(async (_req, ctx) => {
       createdAt: posts.createdAt,
       updatedAt: posts.updatedAt,
       authorName: users.fullName,
+      authorAvatarUrl: users.avatarUrl,
       mediaId: media.id,
       mediaUrl: media.url,
       likeCount: sql<number>`CAST((SELECT count(*) FROM ${reactions} WHERE ${reactions.targetId} = ${posts.id} AND ${reactions.targetType} = 'POST') AS INT)`,
@@ -94,7 +95,7 @@ export const GET = withAuth(async (_req, ctx) => {
     likeCount: row.likeCount,
     commentCount: row.commentCount,
     isLiked: row.isLiked,
-    author: { id: row.authorId, fullName: row.authorName, roles: row.roleName ? [{ name: row.roleName }] : [] },
+    author: { id: row.authorId, fullName: row.authorName, avatarUrl: row.authorAvatarUrl, roles: row.roleName ? [{ name: row.roleName }] : [] },
     media: row.mediaUrl ? { id: row.mediaId, url: row.mediaUrl } : null,
   });
 });

@@ -103,6 +103,27 @@ export const POST = withPermission(async (req, ctx) => {
   const isPublishing = d.status === "PUBLISHED";
   const publishedAt = isPublishing ? new Date() : null;
 
+  let finalAudiences = d.audiences;
+  const profile = await getUserPostProfile(ctx.user.userId);
+  if (
+    profile &&
+    profile.roleNames.includes("Class_representative") &&
+    !profile.roleNames.includes("admin") &&
+    !profile.roleNames.includes("staff")
+  ) {
+    if (!profile.programmeId || profile.yearOfStudy == null) {
+      return errorResponse("Class Representatives must have a programme and year of study assigned to their profile.", 403);
+    }
+    // Force the target to only their programme & year
+    finalAudiences = [
+      {
+        targetType: "PROGRAMME_YEAR",
+        programmeId: profile.programmeId,
+        yearOfStudy: profile.yearOfStudy,
+      },
+    ];
+  }
+
   const [created] = await db.transaction(async (tx) => {
     const [post] = await tx
       .insert(posts)
@@ -117,7 +138,7 @@ export const POST = withPermission(async (req, ctx) => {
       })
       .returning();
 
-    const audienceRows = d.audiences.map((a) => ({
+    const audienceRows = finalAudiences.map((a) => ({
       postId: post.id,
       targetType: a.targetType,
       collegeId: a.collegeId ?? null,

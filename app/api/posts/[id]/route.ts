@@ -136,9 +136,29 @@ export const PUT = withPermission(async (req, ctx) => {
     if (!post) return null;
 
     if (d.audiences && d.audiences.length > 0) {
+      let finalAudiences = d.audiences;
+      const profile = await getUserPostProfile(ctx.user.userId);
+      if (
+        profile &&
+        profile.roleNames.includes("Class_representative") &&
+        !profile.roleNames.includes("admin") &&
+        !profile.roleNames.includes("staff")
+      ) {
+        if (!profile.programmeId || profile.yearOfStudy == null) {
+          throw new Error("Class Representatives must have a programme and year of study assigned to their profile.");
+        }
+        finalAudiences = [
+          {
+            targetType: "PROGRAMME_YEAR",
+            programmeId: profile.programmeId,
+            yearOfStudy: profile.yearOfStudy,
+          },
+        ];
+      }
+
       await tx.delete(postAudiences).where(eq(postAudiences.postId, id));
       await tx.insert(postAudiences).values(
-        d.audiences.map((a) => ({
+        finalAudiences.map((a) => ({
           postId: id,
           targetType: a.targetType,
           collegeId: a.collegeId ?? null,

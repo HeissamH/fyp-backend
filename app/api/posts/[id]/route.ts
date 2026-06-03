@@ -154,6 +154,23 @@ export const PUT = withPermission(async (req, ctx) => {
             yearOfStudy: profile.yearOfStudy,
           },
         ];
+      } else if (
+        profile &&
+        (profile.roleNames.includes("daruso") || profile.roleNames.includes("daruso leader")) &&
+        !profile.roleNames.includes("admin") &&
+        !profile.roleNames.includes("staff")
+      ) {
+        const userCollegeId = profile.roleCollegeId ?? profile.collegeId;
+        if (!userCollegeId) {
+          throw new Error("College Reps must have a college assigned to their profile or role.");
+        }
+        // Force the target to only their college
+        finalAudiences = [
+          {
+            targetType: "COLLEGE",
+            collegeId: userCollegeId,
+          },
+        ];
       }
 
       await tx.delete(postAudiences).where(eq(postAudiences.postId, id));

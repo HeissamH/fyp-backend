@@ -122,6 +122,23 @@ export const POST = withPermission(async (req, ctx) => {
         yearOfStudy: profile.yearOfStudy,
       },
     ];
+  } else if (
+    profile &&
+    (profile.roleNames.includes("daruso") || profile.roleNames.includes("daruso leader")) &&
+    !profile.roleNames.includes("admin") &&
+    !profile.roleNames.includes("staff")
+  ) {
+    const userCollegeId = profile.roleCollegeId ?? profile.collegeId;
+    if (!userCollegeId) {
+      return errorResponse("College Reps must have a college assigned to their profile or role.", 403);
+    }
+    // Force the target to only their college
+    finalAudiences = [
+      {
+        targetType: "COLLEGE",
+        collegeId: userCollegeId,
+      },
+    ];
   }
 
   const [created] = await db.transaction(async (tx) => {

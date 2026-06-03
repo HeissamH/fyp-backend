@@ -13,6 +13,7 @@ import type { SQL } from "drizzle-orm";
 export type UserPostProfile = {
   roleNames: string[];
   collegeId: string | null;
+  roleCollegeId: string | null;
   programmeId: string | null;
   departmentId: string | null;
   yearOfStudy: number | null;
@@ -34,14 +35,18 @@ export async function getUserPostProfile(userId: string): Promise<UserPostProfil
   if (!row) return null;
 
   const rolesForUser = await db
-    .select({ name: roles.name })
+    .select({ name: roles.name, collegeId: userRoles.collegeId })
     .from(userRoles)
     .innerJoin(roles, eq(userRoles.roleId, roles.id))
     .where(and(eq(userRoles.userId, userId), isNull(userRoles.revokedAt)));
 
+  // If a user has a role mapped to a college, we extract it.
+  const roleCollegeId = rolesForUser.find(r => r.collegeId !== null)?.collegeId ?? null;
+
   return {
     roleNames: rolesForUser.map((r) => r.name),
     collegeId: row.collegeId ?? null,
+    roleCollegeId,
     programmeId: row.programmeId ?? null,
     departmentId: row.departmentId ?? null,
     yearOfStudy: row.yearOfStudy ?? null,

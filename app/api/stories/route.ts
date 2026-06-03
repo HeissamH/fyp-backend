@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
-import { stories, storyViews, users, colleges, media } from "@/lib/db/schema";
-import { eq, and, isNull, gt, desc, ne } from "drizzle-orm";
+import { stories, storyViews, users, colleges, media, userRoles } from "@/lib/db/schema";
+import { eq, and, isNull, isNotNull, gt, desc, ne } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { withAuth, withPermission } from "@/lib/auth/middleware";
 import { successResponse, errorResponse } from "@/lib/utils/api-response";
@@ -102,6 +102,23 @@ export const POST = withPermission(async (req, ctx) => {
   }
 
   // A story with no college would be invisible in the app tray — reject early.
+  if (!resolvedCollegeId) {
+    // Fallback: check if any active role assignment for this user carries a collegeId
+    // (handles DARUSO leaders, college reps, etc. who have no personal users.collegeId)
+    const [roleWithCollege] = await db
+      .select({ collegeId: userRoles.collegeId })
+      .from(userRoles)
+      .where(
+        and(
+          eq(userRoles.userId, ctx.user.userId),
+          isNull(userRoles.revokedAt),
+          isNotNull(userRoles.collegeId)
+        ),
+      )
+      .limit(1);
+    resolvedCollegeId = roleWithCollege?.collegeId ?? null;
+  }
+
   if (!resolvedCollegeId) {
     return errorResponse(
       "Your account has no college assigned. Please contact an administrator before posting a story.",

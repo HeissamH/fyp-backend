@@ -26,6 +26,8 @@ export const users = pgTable(
     programmeId: uuid("programme_id").references(() => programmes.id),
     yearOfStudy: integer("year_of_study"),
     currentSemester: integer("current_semester"),
+    avatarUrl: text("avatar_url"),
+    phoneNumber: varchar("phone_number", { length: 20 }),
     isActive: boolean("is_active").default(true).notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),

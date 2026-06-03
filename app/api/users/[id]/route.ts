@@ -33,6 +33,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         programmeId: users.programmeId,
         yearOfStudy: users.yearOfStudy,
         currentSemester: users.currentSemester,
+        avatarUrl: users.avatarUrl,
+        phoneNumber: users.phoneNumber,
         createdAt: users.createdAt,
       })
       .from(users)
@@ -98,8 +100,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       programme: programmeInfo,
       yearOfStudy: dbUser.yearOfStudy,
       currentSemester: dbUser.currentSemester,
+      avatarUrl: dbUser.avatarUrl,
+      phoneNumber: dbUser.phoneNumber,
       createdAt: dbUser.createdAt,
-      phoneNumber: (dbUser as any).phoneNumber,
     });
   } catch (error) {
     return errorResponse("Internal server error", 500);

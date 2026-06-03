@@ -71,6 +71,13 @@
       "when": 1780443138210,
       "tag": "0009_jazzy_gamma_corps",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1780516468996,
+      "tag": "0010_special_adam_warlock",
+      "breakpoints": true
     }
   ]
 }

@@ -1,7 +1,8 @@
 import { z } from "zod";
 
 export const updateUserSchema = z.object({
-  fullName: z.string().min(2).optional(),
+  avatarUrl: z.string().url().nullable().optional(),
+  phoneNumber: z.string().max(20).optional(),
   sex: z.enum(["MALE", "FEMALE"]).optional(),
   email: z.string().email().optional(),
   programmeId: z.string().uuid().optional(),

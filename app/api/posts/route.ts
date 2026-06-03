@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { posts, postAudiences, users, media, reactions, comments, userRoles, roles } from "@/lib/db/schema";
-import { eq, and, isNull, desc, ilike, inArray, sql } from "drizzle-orm";
+import { eq, and, or, isNull, desc, ilike, inArray, sql } from "drizzle-orm";
 import { withAuth, withPermission } from "@/lib/auth/middleware";
 import { successResponse, errorResponse, paginatedResponse } from "@/lib/utils/api-response";
 import { parsePagination } from "@/lib/utils/pagination";
@@ -41,7 +41,7 @@ export const GET = withAuth(async (req, ctx) => {
       or(
         eq(posts.authorId, userId),
         and(inArray(posts.id, matchSub), eq(posts.status, "PUBLISHED"))
-      )
+      )!
     );
   }
 

@@ -109,7 +109,7 @@ export const GET = withAuth(async (req, ctx) => {
       or(
         eq(announcements.authorId, userId),
         and(inArray(announcements.id, matchingAnnouncementIds), eq(announcements.status, "PUBLISHED"))
-      )
+      )!
     );
   }
 

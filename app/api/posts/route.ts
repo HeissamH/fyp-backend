@@ -18,6 +18,7 @@ import {
 export const GET = withAuth(async (req, ctx) => {
   const { page, pageSize, offset } = parsePagination(new URL(req.url).searchParams);
   const search = new URL(req.url).searchParams.get("search");
+  const authorIdParam = new URL(req.url).searchParams.get("authorId");
 
   const userId = ctx.user.userId;
   const profile = await getUserPostProfile(userId);
@@ -37,6 +38,7 @@ export const GET = withAuth(async (req, ctx) => {
   }
 
   if (search) conditions.push(ilike(posts.title, `%${search}%`));
+  if (authorIdParam) conditions.push(eq(posts.authorId, authorIdParam));
 
   const whereClause = and(...conditions);
 

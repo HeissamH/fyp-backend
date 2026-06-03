@@ -70,8 +70,9 @@ export function buildPostAudienceConditions(profile: UserPostProfile, groupIds: 
       and(eq(postAudiences.targetType, "ROLE"), inArray(postAudiences.roleTarget, profile.roleNames))!,
     );
   }
-  if (profile.collegeId) {
-    audienceConditions.push(and(eq(postAudiences.targetType, "COLLEGE"), eq(postAudiences.collegeId, profile.collegeId))!);
+  if (profile.collegeId || profile.roleCollegeId) {
+    const collegeIds = [profile.collegeId, profile.roleCollegeId].filter(Boolean) as string[];
+    audienceConditions.push(and(eq(postAudiences.targetType, "COLLEGE"), inArray(postAudiences.collegeId, collegeIds))!);
   }
   if (profile.departmentId) {
     audienceConditions.push(

@@ -42,20 +42,20 @@ export const GET = withAuth(async (req, ctx) => {
   if (!userBasic) return errorResponse("User not found", 404);
 
   const rolesForUser = await db
-    .select({ name: roles.name })
+    .select({ name: roles.name, collegeId: userRoles.collegeId })
     .from(userRoles)
     .innerJoin(roles, eq(userRoles.roleId, roles.id))
     .where(and(eq(userRoles.userId, userId), isNull(userRoles.revokedAt)));
 
   const roleNames = rolesForUser.map((r) => r.name);
-  const userProfile = { ...userBasic, roleNames };
+  const roleCollegeId = rolesForUser.find((r) => r.collegeId !== null)?.collegeId ?? null;
+  const userProfile = { ...userBasic, roleNames, roleCollegeId };
 
   const isAdminOrStaff = roleNames.includes("admin") || roleNames.includes("staff");
 
   const conditions = [isNull(announcements.deletedAt)];
 
   if (!isAdminOrStaff) {
-    conditions.push(eq(announcements.status, "PUBLISHED"));
 
     const audienceConditions = [];
 
@@ -71,9 +71,10 @@ export const GET = withAuth(async (req, ctx) => {
       }
     } else {
       audienceConditions.push(eq(announcementAudiences.targetType, "ALL"));
-      if (userProfile.collegeId) {
+      if (userProfile.collegeId || userProfile.roleCollegeId) {
+        const collegeIds = [userProfile.collegeId, userProfile.roleCollegeId].filter(Boolean) as string[];
         audienceConditions.push(
-          and(eq(announcementAudiences.targetType, "COLLEGE"), eq(announcementAudiences.collegeId, userProfile.collegeId)),
+          and(eq(announcementAudiences.targetType, "COLLEGE"), inArray(announcementAudiences.collegeId, collegeIds)),
         );
       }
       if (userProfile.programmeId) {
@@ -104,7 +105,12 @@ export const GET = withAuth(async (req, ctx) => {
       .from(announcementAudiences)
       .where(or(...audienceConditions));
 
-    conditions.push(inArray(announcements.id, matchingAnnouncementIds));
+    conditions.push(
+      or(
+        eq(announcements.authorId, userId),
+        and(inArray(announcements.id, matchingAnnouncementIds), eq(announcements.status, "PUBLISHED"))
+      )
+    );
   }
 
   if (typeFilter) conditions.push(eq(announcements.type, typeFilter));

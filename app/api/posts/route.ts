@@ -33,8 +33,16 @@ export const GET = withAuth(async (req, ctx) => {
     const groupIds = await getActiveGroupIdsForUser(userId);
     const audienceConditions = buildPostAudienceConditions(profile, groupIds);
     const matchSub = matchingPostIdsSubquery(audienceConditions);
-    conditions.push(inArray(posts.id, matchSub));
-    conditions.push(eq(posts.status, "PUBLISHED"));
+    
+    // Non-admins can see:
+    // 1. Any post they authored
+    // 2. Or any post that is PUBLISHED AND matches their audience
+    conditions.push(
+      or(
+        eq(posts.authorId, userId),
+        and(inArray(posts.id, matchSub), eq(posts.status, "PUBLISHED"))
+      )
+    );
   }
 
   if (search) conditions.push(ilike(posts.title, `%${search}%`));

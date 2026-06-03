@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { posts, postAudiences, users, media, reactions, comments } from "@/lib/db/schema";
+import { posts, postAudiences, users, media, reactions, comments, userRoles, roles } from "@/lib/db/schema";
 import { eq, and, isNull, desc, ilike, inArray, sql } from "drizzle-orm";
 import { withAuth, withPermission } from "@/lib/auth/middleware";
 import { successResponse, errorResponse, paginatedResponse } from "@/lib/utils/api-response";
@@ -64,6 +64,7 @@ export const GET = withAuth(async (req, ctx) => {
       likeCount: sql<number>`CAST((SELECT count(*) FROM ${reactions} WHERE ${reactions.targetId} = ${posts.id} AND ${reactions.targetType} = 'POST') AS INT)`,
       commentCount: sql<number>`CAST((SELECT count(*) FROM ${comments} WHERE ${comments.targetId} = ${posts.id} AND ${comments.targetType} = 'ANNOUNCEMENT') AS INT)`,
       isLiked: sql<boolean>`EXISTS(SELECT 1 FROM ${reactions} WHERE ${reactions.targetId} = ${posts.id} AND ${reactions.targetType} = 'POST' AND ${reactions.userId} = ${userId})`,
+      roleName: sql<string>`(SELECT r.name FROM ${userRoles} ur JOIN ${roles} r ON ur.role_id = r.id WHERE ur.user_id = ${users.id} AND ur.revoked_at IS NULL ORDER BY r.name ASC LIMIT 1)`,
     })
     .from(posts)
     .leftJoin(users, eq(posts.authorId, users.id))
@@ -86,7 +87,7 @@ export const GET = withAuth(async (req, ctx) => {
     likeCount: p.likeCount,
     commentCount: p.commentCount,
     isLiked: p.isLiked,
-    author: { id: p.authorId, fullName: p.authorName },
+    author: { id: p.authorId, fullName: p.authorName, roles: p.roleName ? [{ name: p.roleName }] : [] },
     media: p.mediaUrl ? { id: p.mediaId, url: p.mediaUrl } : null,
   }));
 

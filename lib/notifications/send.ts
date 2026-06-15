@@ -2,14 +2,9 @@ import { db } from "@/lib/db";
 import { notificationTokens, notifications } from "@/lib/db/schema";
 import { eq, inArray } from "drizzle-orm";
 import { getFirebaseMessaging, isFirebaseConfigured } from "@/lib/firebase";
+import type { NotificationPayload } from "@/lib/notifications/types";
 
-export type NotificationPayload = {
-  title: string;
-  body: string;
-  type: string;
-  targetId?: string;
-  targetType?: string;
-};
+export type { NotificationPayload } from "@/lib/notifications/types";
 
 const FCM_CHUNK = 500;
 

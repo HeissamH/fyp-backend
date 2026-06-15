@@ -2,15 +2,13 @@ import { db } from "@/lib/db";
 import {
   users,
   roles,
-  programmes,
   userRoles,
-  groupMemberships,
-  postAudiences,
+  announcementAudiences,
 } from "@/lib/db/schema";
-import { eq, and, isNull, type SQL } from "drizzle-orm";
+import { eq, and, isNull, inArray, type SQL } from "drizzle-orm";
 import { filterByPreferences } from "@/lib/utils/filter-by-preferences";
 
-type AudienceRow = typeof postAudiences.$inferSelect;
+type AudienceRow = typeof announcementAudiences.$inferSelect;
 
 async function activeUserIdsWhere(extra: SQL[] = []): Promise<string[]> {
   const rows = await db
@@ -46,21 +44,6 @@ async function usersForAudienceRow(row: AudienceRow): Promise<string[]> {
       if (!row.collegeId) return [];
       return activeUserIdsWhere([eq(users.collegeId, row.collegeId)]);
 
-    case "DEPARTMENT":
-      if (!row.departmentId) return [];
-      return db
-        .select({ id: users.id })
-        .from(users)
-        .innerJoin(programmes, eq(users.programmeId, programmes.id))
-        .where(
-          and(
-            eq(programmes.departmentId, row.departmentId),
-            eq(users.isActive, true),
-            isNull(users.deletedAt),
-          ),
-        )
-        .then((rows) => rows.map((r) => r.id));
-
     case "PROGRAMME":
       if (!row.programmeId) return [];
       return activeUserIdsWhere([eq(users.programmeId, row.programmeId)]);
@@ -72,36 +55,20 @@ async function usersForAudienceRow(row: AudienceRow): Promise<string[]> {
         eq(users.yearOfStudy, row.yearOfStudy),
       ]);
 
-    case "GROUP":
-      if (!row.groupId) return [];
-      return db
-        .select({ id: users.id })
-        .from(groupMemberships)
-        .innerJoin(users, eq(groupMemberships.userId, users.id))
-        .where(
-          and(
-            eq(groupMemberships.groupId, row.groupId),
-            isNull(groupMemberships.leftAt),
-            eq(users.isActive, true),
-            isNull(users.deletedAt),
-          ),
-        )
-        .then((rows) => rows.map((r) => r.id));
-
     default:
       return [];
   }
 }
 
-/** Users who should receive a notification for this post (inverse of feed audience logic). */
-export async function resolveRecipientUserIds(
-  postId: string,
+/** Users who should receive a notification for this announcement. */
+export async function resolveAnnouncementRecipientUserIds(
+  announcementId: string,
   options?: { excludeUserId?: string },
 ): Promise<string[]> {
   const audiences = await db
     .select()
-    .from(postAudiences)
-    .where(eq(postAudiences.postId, postId));
+    .from(announcementAudiences)
+    .where(eq(announcementAudiences.announcementId, announcementId));
 
   const idSet = new Set<string>();
   for (const row of audiences) {
@@ -115,5 +82,5 @@ export async function resolveRecipientUserIds(
 
   if (idSet.size === 0) return [];
 
-  return filterByPreferences(Array.from(idSet), "posts");
+  return filterByPreferences(Array.from(idSet), "announcements");
 }

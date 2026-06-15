@@ -3,6 +3,7 @@ import { posts } from "@/lib/db/schema";
 import { eq, and, isNull } from "drizzle-orm";
 import { resolveRecipientUserIds } from "@/lib/utils/post-recipients";
 import { notifyUsers } from "@/lib/notifications/send";
+import { NOTIFICATION_TYPES, buildNotificationPayload } from "@/lib/notifications/types";
 
 function excerpt(text: string, max = 120): string {
   const trimmed = text.trim();
@@ -32,13 +33,15 @@ export async function notifyPostPublished(postId: string): Promise<void> {
 
     const body = post.title?.trim() ? post.title.trim() : excerpt(post.content);
 
-    await notifyUsers(userIds, {
-      title: "New post",
-      body,
-      type: "POST",
-      targetId: post.id,
-      targetType: "POST",
-    });
+    await notifyUsers(
+      userIds,
+      buildNotificationPayload({
+        title: "New post",
+        body,
+        type: NOTIFICATION_TYPES.POST,
+        targetId: post.id,
+      }),
+    );
   } catch (err) {
     console.error(`notifyPostPublished failed for ${postId}:`, err);
   }

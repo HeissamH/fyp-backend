@@ -8,6 +8,8 @@ import { successResponse, errorResponse } from "@/lib/utils/api-response";
 import { createStorySchema } from "@/lib/validators/stories";
 import { logAction } from "@/lib/audit";
 import { notifyUsers } from "@/lib/notifications/send";
+import { NOTIFICATION_TYPES, buildNotificationPayload } from "@/lib/notifications/types";
+import { filterByPreferences } from "@/lib/utils/filter-by-preferences";
 
 export const GET = withAuth(async (_req, ctx) => {
   const userId = ctx.user.userId;
@@ -150,13 +152,21 @@ export const POST = withPermission(async (req, ctx) => {
       .from(users)
       .where(and(eq(users.collegeId, resolvedCollegeId), ne(users.id, ctx.user.userId)));
 
-    if (targetUsers.length > 0) {
-      await notifyUsers(targetUsers.map(u => u.id), {
-        title: "New Story Update",
-        body: d.caption || "A new story was posted in your college bubble. Tap to view!",
-        type: "story",
-        targetId: created.id,
-      });
+    const recipientIds = await filterByPreferences(
+      targetUsers.map((u) => u.id),
+      "stories",
+    );
+
+    if (recipientIds.length > 0) {
+      await notifyUsers(
+        recipientIds,
+        buildNotificationPayload({
+          title: "New Story Update",
+          body: d.caption || "A new story was posted in your college bubble. Tap to view!",
+          type: NOTIFICATION_TYPES.STORY,
+          targetId: created.id,
+        }),
+      );
     }
 
     return successResponse(created, "Story created successfully", 201);

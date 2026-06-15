@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { feedback } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { notifyUsers } from "@/lib/notifications/send";
+import { NOTIFICATION_TYPES, buildNotificationPayload } from "@/lib/notifications/types";
 
 /** Inbox + push when feedback status becomes REVIEWED or RESOLVED. */
 export async function notifyFeedbackStatusChanged(feedbackId: string): Promise<void> {
@@ -26,13 +27,15 @@ export async function notifyFeedbackStatusChanged(feedbackId: string): Promise<v
         ? `Your feedback "${row.subject}" has been resolved.`
         : `Your feedback "${row.subject}" is now under review.`;
 
-    await notifyUsers([row.userId], {
-      title,
-      body,
-      type: "FEEDBACK",
-      targetId: row.id,
-      targetType: "FEEDBACK",
-    });
+    await notifyUsers(
+      [row.userId],
+      buildNotificationPayload({
+        title,
+        body,
+        type: NOTIFICATION_TYPES.FEEDBACK,
+        targetId: row.id,
+      }),
+    );
   } catch (err) {
     console.error(`notifyFeedbackStatusChanged failed for ${feedbackId}:`, err);
   }

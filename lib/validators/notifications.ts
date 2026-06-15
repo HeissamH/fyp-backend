@@ -7,4 +7,7 @@ export const registerTokenSchema = z.object({
 
 export const updateNotificationPreferencesSchema = z.object({
   posts: z.boolean().optional(),
+  announcements: z.boolean().optional(),
+  stories: z.boolean().optional(),
+  lostFound: z.boolean().optional(),
 });

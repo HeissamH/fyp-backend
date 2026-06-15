@@ -5,6 +5,13 @@ import { withAuth } from "@/lib/auth/middleware";
 import { successResponse, errorResponse } from "@/lib/utils/api-response";
 import { updateNotificationPreferencesSchema } from "@/lib/validators/notifications";
 
+const DEFAULT_PREFERENCES = {
+  posts: true,
+  announcements: true,
+  stories: true,
+  lostFound: true,
+};
+
 export const GET = withAuth(async (_req, ctx) => {
   const [prefs] = await db
     .select()
@@ -13,7 +20,15 @@ export const GET = withAuth(async (_req, ctx) => {
     .limit(1);
 
   return successResponse(
-    prefs ?? { userId: ctx.user.userId, posts: true },
+    prefs
+      ? {
+          userId: prefs.userId,
+          posts: prefs.posts,
+          announcements: prefs.announcements,
+          stories: prefs.stories,
+          lostFound: prefs.lostFound,
+        }
+      : { userId: ctx.user.userId, ...DEFAULT_PREFERENCES },
     "Preferences retrieved",
   );
 });
@@ -31,16 +46,31 @@ export const PUT = withAuth(async (req, ctx) => {
     .values({
       userId: ctx.user.userId,
       posts: d.posts ?? true,
+      announcements: d.announcements ?? true,
+      stories: d.stories ?? true,
+      lostFound: d.lostFound ?? true,
       updatedAt: now,
     })
     .onConflictDoUpdate({
       target: userNotificationPreferences.userId,
       set: {
         ...(d.posts !== undefined ? { posts: d.posts } : {}),
+        ...(d.announcements !== undefined ? { announcements: d.announcements } : {}),
+        ...(d.stories !== undefined ? { stories: d.stories } : {}),
+        ...(d.lostFound !== undefined ? { lostFound: d.lostFound } : {}),
         updatedAt: now,
       },
     })
     .returning();
 
-  return successResponse(saved, "Preferences updated");
+  return successResponse(
+    {
+      userId: saved.userId,
+      posts: saved.posts,
+      announcements: saved.announcements,
+      stories: saved.stories,
+      lostFound: saved.lostFound,
+    },
+    "Preferences updated",
+  );
 });

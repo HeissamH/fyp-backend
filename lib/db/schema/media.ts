@@ -10,6 +10,7 @@ export const media = pgTable("media", {
   mimeType: varchar("mime_type", { length: 100 }).notNull(),
   sizeBytes: integer("size_bytes").notNull(),
   filename: varchar("filename", { length: 255 }).notNull(),
+  storagePath: varchar("storage_path", { length: 512 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

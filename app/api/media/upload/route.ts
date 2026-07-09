@@ -48,26 +48,20 @@ export const POST = withAuth(async (req, ctx) => {
     return errorResponse(`Failed to upload file: ${uploadError?.message || uploadError}`, 500);
   }
 
-  // Generate signed URL (valid for 1 year — private bucket)
-  const { data: signedData, error: signedError } = await supabase.storage
-    .from(STORAGE_BUCKET)
-    .createSignedUrl(storagePath, 60 * 60 * 24 * 365);
-
-  if (signedError || !signedData?.signedUrl) {
-    console.error("Signed URL error:", signedError);
-    return errorResponse("File uploaded but failed to generate URL", 500);
-  }
-
-  const url = signedData.signedUrl;
+  const recordId = crypto.randomUUID();
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "";
+  const finalUrl = `${appUrl}/api/media/${recordId}`;
 
   // Save record to media table
   const [record] = await db.insert(media).values({
+    id: recordId,
     uploadedBy: userId,
-    url,
+    url: finalUrl,
     type: mediaType,
     mimeType: file.type,
     sizeBytes: file.size,
     filename: safeFilename,
+    storagePath: storagePath,
   }).returning();
 
   await logAction({

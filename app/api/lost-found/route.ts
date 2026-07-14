@@ -6,6 +6,7 @@ import { successResponse, errorResponse } from "@/lib/utils/api-response";
 import { parsePagination } from "@/lib/utils/pagination";
 import { createLostFoundSchema } from "@/lib/validators/lost-found";
 import { logAction } from "@/lib/audit";
+import { after } from "next/server";
 import { notifyUsers } from "@/lib/notifications/send";
 import { NOTIFICATION_TYPES, buildNotificationPayload } from "@/lib/notifications/types";
 import { resolveLostFoundRecipientUserIds } from "@/lib/utils/lost-found-recipients";
@@ -145,21 +146,24 @@ export const POST = withAuth(async (req, ctx) => {
     metadata: { type: d.type, anonymous: d.isAnonymous },
   });
 
-  const recipientIds = await resolveLostFoundRecipientUserIds(ctx.user.userId, {
-    excludeUserId: ctx.user.userId,
-  });
-
-  if (recipientIds.length > 0) {
+  const itemId = created.id;
+  const title = d.title;
+  const reporterId = ctx.user.userId;
+  after(async () => {
+    const recipientIds = await resolveLostFoundRecipientUserIds(reporterId, {
+      excludeUserId: reporterId,
+    });
+    if (recipientIds.length === 0) return;
     await notifyUsers(
       recipientIds,
       buildNotificationPayload({
         title: "Lost & Found Alert",
-        body: d.title,
+        body: title,
         type: NOTIFICATION_TYPES.LOST_FOUND,
-        targetId: created.id,
+        targetId: itemId,
       }),
     );
-  }
+  });
 
   return successResponse(created, "Item reported successfully", 201);
 });

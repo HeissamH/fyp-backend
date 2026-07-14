@@ -7,6 +7,7 @@ import { withAuth, withPermission } from "@/lib/auth/middleware";
 import { successResponse, errorResponse } from "@/lib/utils/api-response";
 import { createStorySchema } from "@/lib/validators/stories";
 import { logAction } from "@/lib/audit";
+import { after } from "next/server";
 import { notifyUsers } from "@/lib/notifications/send";
 import { NOTIFICATION_TYPES, buildNotificationPayload } from "@/lib/notifications/types";
 import { filterByPreferences } from "@/lib/utils/filter-by-preferences";
@@ -147,27 +148,32 @@ export const POST = withPermission(async (req, ctx) => {
       entityId: created.id,
     });
 
-    const targetUsers = await db
-      .select({ id: users.id })
-      .from(users)
-      .where(and(eq(users.collegeId, resolvedCollegeId), ne(users.id, ctx.user.userId)));
+    const storyId = created.id;
+    const caption = d.caption;
+    const collegeId = resolvedCollegeId;
+    const authorId = ctx.user.userId;
+    after(async () => {
+      const targetUsers = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(and(eq(users.collegeId, collegeId), ne(users.id, authorId)));
 
-    const recipientIds = await filterByPreferences(
-      targetUsers.map((u) => u.id),
-      "stories",
-    );
+      const recipientIds = await filterByPreferences(
+        targetUsers.map((u) => u.id),
+        "stories",
+      );
+      if (recipientIds.length === 0) return;
 
-    if (recipientIds.length > 0) {
       await notifyUsers(
         recipientIds,
         buildNotificationPayload({
           title: "New Story Update",
-          body: d.caption || "A new story was posted in your college bubble. Tap to view!",
+          body: caption || "A new story was posted in your college bubble. Tap to view!",
           type: NOTIFICATION_TYPES.STORY,
-          targetId: created.id,
+          targetId: storyId,
         }),
       );
-    }
+    });
 
     return successResponse(created, "Story created successfully", 201);
   } catch (error: any) {

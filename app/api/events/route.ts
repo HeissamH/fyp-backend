@@ -8,6 +8,7 @@ import { parsePagination } from "@/lib/utils/pagination";
 import { createEventSchema } from "@/lib/validators/events";
 import { generateSlug } from "@/lib/utils/slug";
 import { logAction } from "@/lib/audit";
+import { after } from "next/server";
 import { notifyUsers } from "@/lib/notifications/send";
 
 export const GET = withAuth(async (req) => {
@@ -141,19 +142,23 @@ export const POST = withPermission(async (req, ctx) => {
   });
 
   if (isPublishing) {
-    const targetUsers = await db
-      .select({ id: users.id })
-      .from(users)
-      .where(ne(users.id, ctx.user.userId));
+    const eventId = created.id;
+    const title = d.title;
+    const authorId = ctx.user.userId;
+    after(async () => {
+      const targetUsers = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(ne(users.id, authorId));
 
-    if (targetUsers.length > 0) {
+      if (targetUsers.length === 0) return;
       await notifyUsers(targetUsers.map((u) => u.id), {
         title: "Upcoming Event",
-        body: d.title,
+        body: title,
         type: "event",
-        targetId: created.id,
+        targetId: eventId,
       });
-    }
+    });
   }
 
   return successResponse(created, "Event created successfully", 201);

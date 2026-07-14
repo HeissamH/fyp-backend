@@ -17,6 +17,7 @@ import { parsePagination } from "@/lib/utils/pagination";
 import { createAnnouncementSchema } from "@/lib/validators/announcements";
 import { generateSlug } from "@/lib/utils/slug";
 import { logAction } from "@/lib/audit";
+import { after } from "next/server";
 import { notifyUsers } from "@/lib/notifications/send";
 import { NOTIFICATION_TYPES, buildNotificationPayload } from "@/lib/notifications/types";
 import { resolveAnnouncementRecipientUserIds } from "@/lib/utils/announcement-recipients";
@@ -238,21 +239,23 @@ export const POST = withPermission(async (req, ctx) => {
   });
 
   if (isPublishing) {
-    const recipientIds = await resolveAnnouncementRecipientUserIds(created.id, {
-      excludeUserId: ctx.user.userId,
-    });
-
-    if (recipientIds.length > 0) {
+    const announcementId = created.id;
+    const title = d.title;
+    after(async () => {
+      const recipientIds = await resolveAnnouncementRecipientUserIds(announcementId, {
+        excludeUserId: ctx.user.userId,
+      });
+      if (recipientIds.length === 0) return;
       await notifyUsers(
         recipientIds,
         buildNotificationPayload({
           title: "New Announcement",
-          body: d.title,
+          body: title,
           type: NOTIFICATION_TYPES.ANNOUNCEMENT,
-          targetId: created.id,
+          targetId: announcementId,
         }),
       );
-    }
+    });
   }
 
   return successResponse(created, "Announcement created successfully", 201);

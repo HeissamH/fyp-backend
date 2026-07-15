@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { stories, storyViews, users, colleges, media, userRoles } from "@/lib/db/schema";
-import { eq, and, isNull, isNotNull, gt, desc, ne } from "drizzle-orm";
+import { eq, and, isNull, isNotNull, gt, desc } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { withAuth, withPermission } from "@/lib/auth/middleware";
 import { successResponse, errorResponse } from "@/lib/utils/api-response";
@@ -11,6 +11,7 @@ import { after } from "next/server";
 import { notifyUsers } from "@/lib/notifications/send";
 import { NOTIFICATION_TYPES, buildNotificationPayload } from "@/lib/notifications/types";
 import { filterByPreferences } from "@/lib/utils/filter-by-preferences";
+import { getUserIdsInCollege } from "@/lib/utils/post-recipients";
 
 export const GET = withAuth(async (_req, ctx) => {
   const userId = ctx.user.userId;
@@ -153,15 +154,11 @@ export const POST = withPermission(async (req, ctx) => {
     const collegeId = resolvedCollegeId;
     const authorId = ctx.user.userId;
     after(async () => {
-      const targetUsers = await db
-        .select({ id: users.id })
-        .from(users)
-        .where(and(eq(users.collegeId, collegeId), ne(users.id, authorId)));
-
-      const recipientIds = await filterByPreferences(
-        targetUsers.map((u) => u.id),
-        "stories",
-      );
+      // Include students whose college is only via programme (users.college_id often null).
+      const collegeUserIds = await getUserIdsInCollege(collegeId, {
+        excludeUserId: authorId,
+      });
+      const recipientIds = await filterByPreferences(collegeUserIds, "stories");
       if (recipientIds.length === 0) return;
 
       await notifyUsers(

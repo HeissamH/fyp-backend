@@ -21,6 +21,47 @@ async function activeUserIdsWhere(extra: SQL[] = []): Promise<string[]> {
   return rows.map((r) => r.id);
 }
 
+/**
+ * Users in a college for targeting (posts, stories, push).
+ * Matches: users.college_id, programme→department college, or role.college_id (DARUSO).
+ */
+export async function getUserIdsInCollege(
+  collegeId: string,
+  options?: { excludeUserId?: string },
+): Promise<string[]> {
+  const direct = await activeUserIdsWhere([eq(users.collegeId, collegeId)]);
+  const viaProgramme = await db
+    .select({ id: users.id })
+    .from(users)
+    .innerJoin(programmes, eq(users.programmeId, programmes.id))
+    .innerJoin(departments, eq(programmes.departmentId, departments.id))
+    .where(
+      and(
+        eq(departments.collegeId, collegeId),
+        eq(users.isActive, true),
+        isNull(users.deletedAt),
+      ),
+    )
+    .then((rows) => rows.map((r) => r.id));
+  const viaRole = await db
+    .select({ id: users.id })
+    .from(userRoles)
+    .innerJoin(users, eq(userRoles.userId, users.id))
+    .where(
+      and(
+        eq(userRoles.collegeId, collegeId),
+        isNull(userRoles.revokedAt),
+        eq(users.isActive, true),
+        isNull(users.deletedAt),
+      ),
+    )
+    .then((rows) => rows.map((r) => r.id));
+
+  const ids = new Set([...direct, ...viaProgramme, ...viaRole]);
+  if (options?.excludeUserId) ids.delete(options.excludeUserId);
+  return Array.from(ids);
+}
+
 async function usersForAudienceRow(row: AudienceRow): Promise<string[]> {
   switch (row.targetType) {
     case "ALL":
@@ -45,36 +86,7 @@ async function usersForAudienceRow(row: AudienceRow): Promise<string[]> {
 
     case "COLLEGE": {
       if (!row.collegeId) return [];
-      // Match users.college_id OR college via programme → department (common for students).
-      const direct = await activeUserIdsWhere([eq(users.collegeId, row.collegeId)]);
-      const viaProgramme = await db
-        .select({ id: users.id })
-        .from(users)
-        .innerJoin(programmes, eq(users.programmeId, programmes.id))
-        .innerJoin(departments, eq(programmes.departmentId, departments.id))
-        .where(
-          and(
-            eq(departments.collegeId, row.collegeId),
-            eq(users.isActive, true),
-            isNull(users.deletedAt),
-          ),
-        )
-        .then((rows) => rows.map((r) => r.id));
-      // Role-scoped college (DARUSO assignment) also counts.
-      const viaRole = await db
-        .select({ id: users.id })
-        .from(userRoles)
-        .innerJoin(users, eq(userRoles.userId, users.id))
-        .where(
-          and(
-            eq(userRoles.collegeId, row.collegeId),
-            isNull(userRoles.revokedAt),
-            eq(users.isActive, true),
-            isNull(users.deletedAt),
-          ),
-        )
-        .then((rows) => rows.map((r) => r.id));
-      return Array.from(new Set([...direct, ...viaProgramme, ...viaRole]));
+      return getUserIdsInCollege(row.collegeId);
     }
 
     case "DEPARTMENT":

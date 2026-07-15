@@ -46,6 +46,8 @@ export async function pushToUsers(userIds: string[], payload: NotificationPayloa
 
   for (let i = 0; i < tokens.length; i += FCM_CHUNK) {
     const chunk = tokens.slice(i, i + FCM_CHUNK);
+    // channelId must match Flutter `highImportanceChannelId` (udsm_alerts_v2).
+    // High priority + default sound is required for Android heads-up / banners.
     const response = await messaging.sendEachForMulticast({
       tokens: chunk.map((t) => t.fcmToken),
       notification: {
@@ -53,15 +55,22 @@ export async function pushToUsers(userIds: string[], payload: NotificationPayloa
         body: payload.body,
       },
       data: {
-        type: payload.type,
+        type: String(payload.type),
+        title: payload.title,
+        body: payload.body,
         ...(payload.targetId ? { targetId: payload.targetId } : {}),
-        ...(payload.targetType ? { targetType: payload.targetType } : {}),
+        ...(payload.targetType ? { targetType: String(payload.targetType) } : {}),
       },
       android: {
         priority: "high",
         notification: {
-          channelId: "high_importance_channel",
+          channelId: "udsm_alerts_v2",
+          priority: "max" as const,
+          defaultSound: true,
+          defaultVibrateTimings: true,
+          notificationCount: 1,
         },
+        ttl: 60 * 60 * 24 * 1000, // 24h
       },
     });
 

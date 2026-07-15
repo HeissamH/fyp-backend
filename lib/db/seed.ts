@@ -466,7 +466,7 @@ async function main() {
   // 7. Create Default Event Categories
   const defaultEventCategories = [
     { name: "Academic", iconName: "school" },
-    { name: "Sports & Entertainment", iconName: "sports" },
+    { name: "Sports", iconName: "sports" },
     { name: "Religious", iconName: "church" },
     { name: "Career", iconName: "work" },
     { name: "Cultural", iconName: "groups" },

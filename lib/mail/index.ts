@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { isCampusStudentEmail, isFastDeliveryEmail } from "@/lib/utils/student-identity";
 
 const resend = new Resend(process.env.RESEND_API_KEY || "fallback_key");
 const FROM_EMAIL =
@@ -46,9 +47,17 @@ export async function sendEmail({
     return { success: false, error: "Email provider returned no message id" };
   }
 
-  // Resend accepts the API call even when the address is suppressed, and
-  // campus MX may hard-bounce a few seconds later. Poll briefly.
-  const delivery = await waitForDeliveryStatus(emailId);
+  // Gmail/Yahoo/etc. almost never hard-bounce instantly — return immediately (faster UX).
+  // Campus student mail may bounce/suppress; do a short poll only for those.
+  if (isFastDeliveryEmail(to)) {
+    return { success: true, emailId, lastEvent: "sent" };
+  }
+
+  const delivery = await waitForDeliveryStatus(
+    emailId,
+    isCampusStudentEmail(to) ? 3 : 2,
+    400,
+  );
   if (
     delivery === "bounced" ||
     delivery === "suppressed" ||
@@ -71,13 +80,13 @@ function deliveryMessage(event: string, to: string): string {
   if (event === "suppressed") {
     return (
       `Email to ${to} is blocked by our mail provider (previous bounce). ` +
-      `Use a different email address, or ask an admin to clear the suppression and resend.`
+      `Try Gmail or another personal email, or ask an admin to clear the suppression.`
     );
   }
   if (event === "bounced") {
     return (
       `Could not deliver to ${to} (bounced). ` +
-      `Check the address is correct, try another email (e.g. Gmail), then tap Resend code.`
+      `If this is student mail and campus SMTP is down, register with Gmail instead.`
     );
   }
   return `Could not deliver email to ${to} (${event}).`;
@@ -85,14 +94,13 @@ function deliveryMessage(event: string, to: string): string {
 
 async function waitForDeliveryStatus(
   emailId: string,
-  attempts = 6,
-  delayMs = 900,
+  attempts = 2,
+  delayMs = 400,
 ): Promise<string | undefined> {
   for (let i = 0; i < attempts; i++) {
     await sleep(delayMs);
     const event = await getEmailLastEvent(emailId);
     if (!event) continue;
-    // Terminal failure states
     if (
       event === "bounced" ||
       event === "suppressed" ||
@@ -101,13 +109,10 @@ async function waitForDeliveryStatus(
     ) {
       return event;
     }
-    // Happy path — stop early
     if (event === "delivered" || event === "opened" || event === "clicked") {
       return event;
     }
-    // "sent" / "queued" / "delivery_delayed" → keep polling
   }
-  // Not failed within the window; treat as accepted for send
   return (await getEmailLastEvent(emailId)) || "sent";
 }
 
@@ -115,7 +120,6 @@ async function getEmailLastEvent(emailId: string): Promise<string | undefined> {
   try {
     const { data, error } = await resend.emails.get(emailId);
     if (error || !data) return undefined;
-    // SDK may expose last_event
     const anyData = data as { last_event?: string; lastEvent?: string };
     return anyData.last_event || anyData.lastEvent;
   } catch (e) {

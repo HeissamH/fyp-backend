@@ -98,6 +98,7 @@ export async function POST(req: NextRequest) {
 
     // Send verification OTP to UDSM webmail (best-effort; client can resend).
     let otpSent = false;
+    let otpDeliveryError: string | undefined;
     try {
       await db
         .update(otp)
@@ -123,8 +124,19 @@ export async function POST(req: NextRequest) {
         "email_verification",
       );
       otpSent = emailResult.success;
+      otpDeliveryError = emailResult.error;
+      if (!emailResult.success) {
+        console.error("Registration OTP delivery failed", {
+          email: data.email,
+          error: emailResult.error,
+          lastEvent: emailResult.lastEvent,
+          emailId: emailResult.emailId,
+        });
+      }
     } catch (e) {
       console.error("Registration OTP send failed:", e);
+      otpDeliveryError =
+        e instanceof Error ? e.message : "OTP email send failed";
     }
 
     return successResponse(
@@ -133,10 +145,11 @@ export async function POST(req: NextRequest) {
         roles: [{ id: studentRole.id, name: studentRole.name }],
         requiresEmailVerification: true,
         otpSent,
+        otpDeliveryError: otpSent ? undefined : otpDeliveryError,
       },
       otpSent
         ? "Account created. Check your UDSM webmail for the verification code."
-        : "Account created. Request a verification code to activate login.",
+        : `Account created, but the verification email could not be delivered. ${otpDeliveryError || "Open studentmail.udsm.ac.tz to activate your mailbox, then tap Resend code."}`,
       201,
     );
   } catch (error) {

@@ -80,14 +80,34 @@ export async function POST(req: NextRequest) {
 
     const emailResult = await sendOtpEmail(email, otpCode, purpose);
     if (!emailResult.success) {
-      return errorResponse("Failed to send OTP email. Please try again.", 500);
+      // Keep OTP so support can verify manually if needed; surface real delivery error.
+      console.error("OTP email delivery failed", {
+        email,
+        purpose,
+        error: emailResult.error,
+        lastEvent: emailResult.lastEvent,
+        emailId: emailResult.emailId,
+      });
+      return errorResponse(
+        emailResult.error ||
+          "Failed to deliver OTP to your email. Activate UDSM webmail or try again later.",
+        502,
+        {
+          code: "OTP_EMAIL_DELIVERY_FAILED",
+          lastEvent: emailResult.lastEvent,
+        },
+      );
     }
 
     await logAction({
       userId: user.id,
       action: "GENERATE_OTP",
       entity: "OTP",
-      metadata: { purpose },
+      metadata: {
+        purpose,
+        emailId: emailResult.emailId,
+        lastEvent: emailResult.lastEvent,
+      },
       ipAddress: ip,
     });
 

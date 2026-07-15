@@ -8,7 +8,7 @@ export const comments = pgTable("comments", {
   authorId: uuid("author_id").notNull().references(() => users.id),
   targetId: uuid("target_id").notNull(),
   targetType: varchar("target_type", { length: 20 }).notNull(),
-  // "ANNOUNCEMENT" | "EVENT" | "LOST_FOUND" | "POST"
+  // "ANNOUNCEMENT" | "EVENT" | "LOST_FOUND" | "POST" | "STORY"
   parentId: uuid("parent_id").references((): any => comments.id, { onDelete: "cascade" }),
   content: text("content").notNull(),
   mediaId: uuid("media_id").references(() => media.id),

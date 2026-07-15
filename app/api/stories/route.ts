@@ -1,7 +1,16 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
-import { stories, storyViews, users, colleges, media, userRoles } from "@/lib/db/schema";
-import { eq, and, isNull, isNotNull, gt, desc } from "drizzle-orm";
+import {
+  stories,
+  storyViews,
+  users,
+  colleges,
+  media,
+  userRoles,
+  reactions,
+  comments,
+} from "@/lib/db/schema";
+import { eq, and, isNull, isNotNull, gt, desc, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { withAuth, withPermission } from "@/lib/auth/middleware";
 import { successResponse, errorResponse } from "@/lib/utils/api-response";
@@ -38,6 +47,9 @@ export const GET = withAuth(async (_req, ctx) => {
     mediaId: media.id,
     mediaUrl: media.url,
     mediaType: media.type,
+    likeCount: sql<number>`CAST((SELECT count(*) FROM ${reactions} WHERE ${reactions.targetId} = ${stories.id} AND ${reactions.targetType} = 'STORY') AS INT)`,
+    commentCount: sql<number>`CAST((SELECT count(*) FROM ${comments} WHERE ${comments.targetId} = ${stories.id} AND ${comments.targetType} = 'STORY' AND ${comments.deletedAt} IS NULL) AS INT)`,
+    isLiked: sql<boolean>`EXISTS(SELECT 1 FROM ${reactions} WHERE ${reactions.targetId} = ${stories.id} AND ${reactions.targetType} = 'STORY' AND ${reactions.userId} = ${userId})`,
   })
   .from(stories)
   .leftJoin(users, eq(stories.authorId, users.id))
@@ -72,6 +84,9 @@ export const GET = withAuth(async (_req, ctx) => {
       linkUrl: s.linkUrl,
       linkText: s.linkText,
       viewCount: s.viewCount,
+      likeCount: Number(s.likeCount) || 0,
+      commentCount: Number(s.commentCount) || 0,
+      isLiked: Boolean(s.isLiked),
       expiresAt: s.expiresAt,
       createdAt: s.createdAt,
       hasViewed: viewedSet.has(s.id),

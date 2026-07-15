@@ -21,17 +21,18 @@ export const POST = withAuth(async (_req, ctx) => {
 
   if (story.length === 0) return errorResponse("Story not found or expired", 404);
 
-  // Upsert view record (ON CONFLICT DO NOTHING — composite PK handles uniqueness)
-  await db.insert(storyViews)
+  // Only count a view once per user
+  const inserted = await db.insert(storyViews)
     .values({ storyId: id, userId })
-    .onConflictDoNothing({ target: [storyViews.storyId, storyViews.userId] });
+    .onConflictDoNothing({ target: [storyViews.storyId, storyViews.userId] })
+    .returning({ storyId: storyViews.storyId });
 
-  // Increment viewCount if this is a new view (fire-and-forget)
-  db.update(stories)
-    .set({ viewCount: sql`${stories.viewCount} + 1` })
-    .where(eq(stories.id, id))
-    .execute()
-    .catch(() => {});
+  if (inserted.length > 0) {
+    await db
+      .update(stories)
+      .set({ viewCount: sql`${stories.viewCount} + 1` })
+      .where(eq(stories.id, id));
+  }
 
   return successResponse({ viewed: true }, "Story marked as viewed");
 });

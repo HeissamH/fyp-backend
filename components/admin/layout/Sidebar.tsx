@@ -101,6 +101,9 @@ const styles: Record<string, React.CSSProperties> = {
     borderRight: '1px solid var(--border)',
     display: 'flex',
     flexDirection: 'column',
+    transition: 'var(--transition-theme)',
+    boxShadow: 'var(--shadow-sm)',
+    zIndex: 20,
   },
   logo: {
     height: '64px',
@@ -111,6 +114,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '18px',
     fontWeight: 'bold',
     color: 'var(--primary-h)',
+    letterSpacing: '-0.02em',
   },
   nav: {
     flex: 1,
@@ -121,29 +125,31 @@ const styles: Record<string, React.CSSProperties> = {
     gap: '4px',
   },
   sectionTitle: {
-    fontSize: '12px',
+    fontSize: '11px',
     fontWeight: 600,
     color: 'var(--text-muted)',
     textTransform: 'uppercase',
     padding: '16px 12px 8px 12px',
-    letterSpacing: '0.05em',
+    letterSpacing: '0.06em',
   },
   link: {
     display: 'flex',
     alignItems: 'center',
     padding: '10px 12px',
     borderRadius: 'var(--radius-sm)',
-    color: 'var(--text)',
+    color: 'var(--text-muted)',
     fontSize: '14px',
     fontWeight: 500,
     transition: 'background-color 0.15s, color 0.15s',
   },
   linkActive: {
-    backgroundColor: 'var(--surface-2)',
+    backgroundColor: 'var(--primary-soft)',
     color: 'var(--primary-h)',
+    fontWeight: 600,
   },
   icon: {
     marginRight: '12px',
+    flexShrink: 0,
   },
   footer: {
     padding: '16px 12px',
@@ -162,5 +168,5 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 'var(--radius-sm)',
     cursor: 'pointer',
     textAlign: 'left',
-  }
+  },
 };

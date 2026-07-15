@@ -5,6 +5,7 @@ import { adminLogin } from '@/app/(admin)/actions/auth';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Eye, EyeOff } from 'lucide-react';
+import { ThemeToggle } from '@/components/admin/ui/ThemeToggle';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -34,6 +35,9 @@ export default function LoginPage() {
 
   return (
     <div style={styles.container}>
+      <div style={styles.themeCorner}>
+        <ThemeToggle />
+      </div>
       <div style={styles.card}>
         <div style={styles.header}>
           <h1 style={styles.title}>UDSM Connect Admin</h1>
@@ -93,6 +97,13 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: 'center',
     backgroundColor: 'var(--bg)',
     padding: '20px',
+    position: 'relative',
+    transition: 'var(--transition-theme)',
+  },
+  themeCorner: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
   },
   card: {
     backgroundColor: 'var(--surface)',
@@ -101,7 +112,8 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '40px',
     width: '100%',
     maxWidth: '420px',
-    boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+    boxShadow: 'var(--shadow-lg)',
+    transition: 'var(--transition-theme)',
   },
   header: { textAlign: 'center', marginBottom: '32px' },
   title: { fontSize: '24px', fontWeight: 600, margin: '0 0 8px 0', color: 'var(--text)' },

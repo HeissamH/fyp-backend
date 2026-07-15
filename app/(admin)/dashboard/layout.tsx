@@ -11,9 +11,24 @@ export default async function DashboardLayout({
   await requireAdminSession();
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: 'var(--bg)' }}>
+    <div
+      style={{
+        display: 'flex',
+        minHeight: '100vh',
+        backgroundColor: 'var(--bg)',
+        transition: 'var(--transition-theme)',
+      }}
+    >
       <Sidebar />
-      <div style={{ flex: 1, paddingLeft: 'var(--sidebar-w)', display: 'flex', flexDirection: 'column' }}>
+      <div
+        style={{
+          flex: 1,
+          paddingLeft: 'var(--sidebar-w)',
+          display: 'flex',
+          flexDirection: 'column',
+          minWidth: 0,
+        }}
+      >
         <Topbar />
         <main style={{ flex: 1, padding: '24px', marginTop: '64px' }}>
           {children}

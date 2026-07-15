@@ -14,6 +14,8 @@ import {
   matchingPostIdsSubquery,
   isClassRepresentative,
   isCollegeScopedLeader,
+  isDepartmentScopedStaff,
+  resolveDepartmentStaffAudiences,
   roleNamesInclude,
 } from "@/lib/utils/post-audience";
 
@@ -158,7 +160,7 @@ export const PUT = withPermission(async (req, ctx) => {
       let finalAudiences = d.audiences;
       const profile = await getUserPostProfile(ctx.user.userId);
       const elevated =
-        profile && roleNamesInclude(profile.roleNames, "admin", "staff", "super admin");
+        profile && roleNamesInclude(profile.roleNames, "admin", "super admin");
 
       if (profile && isClassRepresentative(profile.roleNames) && !elevated) {
         if (!profile.programmeId || profile.yearOfStudy == null) {
@@ -184,6 +186,12 @@ export const PUT = withPermission(async (req, ctx) => {
             collegeId: userCollegeId,
           },
         ];
+      } else if (profile && isDepartmentScopedStaff(profile.roleNames) && !elevated) {
+        const constrained = await resolveDepartmentStaffAudiences(profile, finalAudiences);
+        if (!constrained.ok) {
+          throw new Error(constrained.message);
+        }
+        finalAudiences = constrained.audiences as typeof finalAudiences;
       }
 
       await tx.delete(postAudiences).where(eq(postAudiences.postId, id));

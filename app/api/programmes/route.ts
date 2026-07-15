@@ -14,10 +14,14 @@ export async function GET(req: NextRequest) {
     const searchParams = url.searchParams;
     const { page, pageSize, offset } = parsePagination(searchParams);
     const collegeId = searchParams.get("collegeId");
+    const departmentId = searchParams.get("departmentId");
 
     const conditions = [isNull(programmes.deletedAt)];
     if (collegeId) {
       conditions.push(eq(departments.collegeId, collegeId));
+    }
+    if (departmentId) {
+      conditions.push(eq(programmes.departmentId, departmentId));
     }
 
     const whereClause = and(...conditions);

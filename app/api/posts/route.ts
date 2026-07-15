@@ -16,6 +16,7 @@ import {
   isClassRepresentative,
   isCollegeScopedLeader,
   isDepartmentScopedStaff,
+  resolveDepartmentStaffAudiences,
   roleNamesInclude,
 } from "@/lib/utils/post-audience";
 
@@ -172,18 +173,11 @@ export const POST = withPermission(async (req, ctx) => {
       },
     ];
   } else if (profile && isDepartmentScopedStaff(profile.roleNames) && !elevated) {
-    if (!profile.departmentId) {
-      return errorResponse(
-        "Lecturers and department staff must have a department assigned to their profile.",
-        403,
-      );
+    const constrained = await resolveDepartmentStaffAudiences(profile, finalAudiences);
+    if (!constrained.ok) {
+      return errorResponse(constrained.message, 403);
     }
-    finalAudiences = [
-      {
-        targetType: "DEPARTMENT",
-        departmentId: profile.departmentId,
-      },
-    ];
+    finalAudiences = constrained.audiences as typeof finalAudiences;
   }
 
   const [created] = await db.transaction(async (tx) => {

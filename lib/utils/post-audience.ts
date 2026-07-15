@@ -72,6 +72,97 @@ export function isDepartmentScopedStaff(roleNames: string[]): boolean {
   });
 }
 
+export type AudienceTargetType =
+  | "ALL"
+  | "COLLEGE"
+  | "DEPARTMENT"
+  | "PROGRAMME"
+  | "PROGRAMME_YEAR"
+  | "ROLE"
+  | "GROUP";
+
+export type AudienceInput = {
+  targetType: AudienceTargetType | string;
+  collegeId?: string | null;
+  departmentId?: string | null;
+  programmeId?: string | null;
+  yearOfStudy?: number | null;
+  roleTarget?: string | null;
+  groupId?: string | null;
+};
+
+/**
+ * Lecturers/staff may post to their whole department, a programme in that
+ * department, or programme+year — never campus-wide / other depts.
+ */
+export async function resolveDepartmentStaffAudiences(
+  profile: UserPostProfile,
+  requested: AudienceInput[],
+): Promise<{ ok: true; audiences: AudienceInput[] } | { ok: false; message: string }> {
+  if (!profile.departmentId) {
+    return {
+      ok: false,
+      message: "Lecturers and department staff must have a department assigned to their profile.",
+    };
+  }
+
+  const deptId = profile.departmentId;
+  const first = requested[0];
+
+  // Default: whole department
+  if (!first || first.targetType === "DEPARTMENT" || first.targetType === "ALL") {
+    return {
+      ok: true,
+      audiences: [{ targetType: "DEPARTMENT", departmentId: deptId }],
+    };
+  }
+
+  if (first.targetType === "PROGRAMME" || first.targetType === "PROGRAMME_YEAR") {
+    if (!first.programmeId) {
+      return { ok: false, message: "Select a programme within your department." };
+    }
+    const [prog] = await db
+      .select({ id: programmes.id, departmentId: programmes.departmentId })
+      .from(programmes)
+      .where(and(eq(programmes.id, first.programmeId), isNull(programmes.deletedAt)))
+      .limit(1);
+
+    if (!prog || prog.departmentId !== deptId) {
+      return {
+        ok: false,
+        message: "You can only target programmes in your own department.",
+      };
+    }
+
+    if (first.targetType === "PROGRAMME_YEAR") {
+      if (first.yearOfStudy == null || first.yearOfStudy < 1) {
+        return { ok: false, message: "Select a year of study for programme targeting." };
+      }
+      return {
+        ok: true,
+        audiences: [
+          {
+            targetType: "PROGRAMME_YEAR",
+            programmeId: prog.id,
+            yearOfStudy: first.yearOfStudy,
+          },
+        ],
+      };
+    }
+
+    return {
+      ok: true,
+      audiences: [{ targetType: "PROGRAMME", programmeId: prog.id }],
+    };
+  }
+
+  return {
+    ok: false,
+    message:
+      "Lecturers and department staff may only post to their department, a programme in it, or a programme year group.",
+  };
+}
+
 export async function getUserPostProfile(userId: string): Promise<UserPostProfile | null> {
   // Alias: department from programme vs direct staff department assignment
   const [row] = await db

@@ -6,6 +6,7 @@ import { successResponse, errorResponse, paginatedResponse } from "@/lib/utils/a
 import { parsePagination } from "@/lib/utils/pagination";
 import { createPostSchema } from "@/lib/validators/posts";
 import { logAction } from "@/lib/audit";
+import { after } from "next/server";
 import { notifyPostPublished } from "@/lib/notifications/notify-post-published";
 import {
   getActiveGroupIdsForUser,
@@ -191,9 +192,8 @@ export const POST = withPermission(async (req, ctx) => {
   });
 
   if (isPublishing) {
-    // Await push so FCM is not dropped by serverless freeze after response.
-    // Campus fan-out is small; typically <1s for one college.
-    await notifyPostPublished(created.id);
+    // Return 201 immediately; FCM/inbox run after the response (Vercel keeps the work alive).
+    after(() => notifyPostPublished(created.id));
   }
 
   return successResponse(created, "Post created successfully", 201);

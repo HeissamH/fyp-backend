@@ -7,6 +7,7 @@ import { withAuth, withPermission } from "@/lib/auth/middleware";
 import { successResponse, errorResponse } from "@/lib/utils/api-response";
 import { createStorySchema } from "@/lib/validators/stories";
 import { logAction } from "@/lib/audit";
+import { after } from "next/server";
 import { notifyUsers } from "@/lib/notifications/send";
 import { NOTIFICATION_TYPES, buildNotificationPayload } from "@/lib/notifications/types";
 import { filterByPreferences } from "@/lib/utils/filter-by-preferences";
@@ -153,12 +154,13 @@ export const POST = withPermission(async (req, ctx) => {
     const collegeId = resolvedCollegeId;
     const authorId = ctx.user.userId;
 
-    // Await so serverless doesn't freeze before FCM finishes (campus lists are small).
-    const collegeUserIds = await getUserIdsInCollege(collegeId, {
-      excludeUserId: authorId,
-    });
-    const recipientIds = await filterByPreferences(collegeUserIds, "stories");
-    if (recipientIds.length > 0) {
+    // Respond immediately; push/inbox continue after the HTTP response.
+    after(async () => {
+      const collegeUserIds = await getUserIdsInCollege(collegeId, {
+        excludeUserId: authorId,
+      });
+      const recipientIds = await filterByPreferences(collegeUserIds, "stories");
+      if (recipientIds.length === 0) return;
       await notifyUsers(
         recipientIds,
         buildNotificationPayload({
@@ -168,7 +170,7 @@ export const POST = withPermission(async (req, ctx) => {
           targetId: storyId,
         }),
       );
-    }
+    });
 
     return successResponse(created, "Story created successfully", 201);
   } catch (error: any) {

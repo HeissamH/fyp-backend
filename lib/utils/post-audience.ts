@@ -3,6 +3,7 @@ import {
   users,
   roles,
   programmes,
+  departments,
   groupMemberships,
   postAudiences,
   userRoles,
@@ -12,6 +13,7 @@ import type { SQL } from "drizzle-orm";
 
 export type UserPostProfile = {
   roleNames: string[];
+  /** Effective college: users.college_id, else programme→department college, else null. */
   collegeId: string | null;
   roleCollegeId: string | null;
   programmeId: string | null;
@@ -19,16 +21,51 @@ export type UserPostProfile = {
   yearOfStudy: number | null;
 };
 
+/** Normalize role labels: "Daruso_leader" → "daruso leader". */
+export function normalizeRoleName(name: string): string {
+  return name.toLowerCase().replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
+}
+
+export function roleNamesInclude(roleNames: string[], ...needles: string[]): boolean {
+  const set = roleNames.map(normalizeRoleName);
+  return needles.some((n) => set.includes(normalizeRoleName(n)));
+}
+
+/** DARUSO / college rep / college leader (any casing or underscores). */
+export function isCollegeScopedLeader(roleNames: string[]): boolean {
+  return roleNames.some((n) => {
+    const x = normalizeRoleName(n);
+    return (
+      x.includes("daruso") ||
+      x.includes("college rep") ||
+      x.includes("college leader") ||
+      x === "college_rep" ||
+      x === "college rep"
+    );
+  });
+}
+
+export function isClassRepresentative(roleNames: string[]): boolean {
+  return roleNames.some((n) => {
+    const x = normalizeRoleName(n);
+    // Avoid matching "college representative" as a class CR.
+    if (x.includes("college")) return false;
+    return x.includes("class representative") || x === "class representative" || x.includes("class rep");
+  });
+}
+
 export async function getUserPostProfile(userId: string): Promise<UserPostProfile | null> {
   const [row] = await db
     .select({
       collegeId: users.collegeId,
       programmeId: users.programmeId,
       departmentId: programmes.departmentId,
+      programmeCollegeId: departments.collegeId,
       yearOfStudy: users.yearOfStudy,
     })
     .from(users)
     .leftJoin(programmes, eq(users.programmeId, programmes.id))
+    .leftJoin(departments, eq(programmes.departmentId, departments.id))
     .where(eq(users.id, userId))
     .limit(1);
 
@@ -41,11 +78,14 @@ export async function getUserPostProfile(userId: string): Promise<UserPostProfil
     .where(and(eq(userRoles.userId, userId), isNull(userRoles.revokedAt)));
 
   // If a user has a role mapped to a college, we extract it.
-  const roleCollegeId = rolesForUser.find(r => r.collegeId !== null)?.collegeId ?? null;
+  const roleCollegeId = rolesForUser.find((r) => r.collegeId !== null)?.collegeId ?? null;
+
+  // Most students only have programme_id set; college is via programme → department.
+  const collegeId = row.collegeId ?? row.programmeCollegeId ?? null;
 
   return {
     roleNames: rolesForUser.map((r) => r.name),
-    collegeId: row.collegeId ?? null,
+    collegeId,
     roleCollegeId,
     programmeId: row.programmeId ?? null,
     departmentId: row.departmentId ?? null,

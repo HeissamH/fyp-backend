@@ -13,6 +13,9 @@ import {
   getUserPostProfile,
   buildPostAudienceConditions,
   matchingPostIdsSubquery,
+  isClassRepresentative,
+  isCollegeScopedLeader,
+  roleNamesInclude,
 } from "@/lib/utils/post-audience";
 
 export const GET = withAuth(async (req, ctx) => {
@@ -25,7 +28,7 @@ export const GET = withAuth(async (req, ctx) => {
   if (!profile) return errorResponse("User not found", 404);
 
   const isAdminOrStaff =
-    profile.roleNames.includes("admin") || profile.roleNames.includes("staff");
+    roleNamesInclude(profile.roleNames, "admin", "staff", "super admin");
 
   const conditions = [isNull(posts.deletedAt)];
 
@@ -33,15 +36,15 @@ export const GET = withAuth(async (req, ctx) => {
     const groupIds = await getActiveGroupIdsForUser(userId);
     const audienceConditions = buildPostAudienceConditions(profile, groupIds);
     const matchSub = matchingPostIdsSubquery(audienceConditions);
-    
+
     // Non-admins can see:
     // 1. Any post they authored
     // 2. Or any post that is PUBLISHED AND matches their audience
     conditions.push(
       or(
         eq(posts.authorId, userId),
-        and(inArray(posts.id, matchSub), eq(posts.status, "PUBLISHED"))
-      )!
+        and(inArray(posts.id, matchSub), eq(posts.status, "PUBLISHED")),
+      )!,
     );
   }
 
@@ -116,14 +119,15 @@ export const POST = withPermission(async (req, ctx) => {
 
   let finalAudiences = d.audiences;
   const profile = await getUserPostProfile(ctx.user.userId);
-  if (
-    profile &&
-    profile.roleNames.includes("Class_representative") &&
-    !profile.roleNames.includes("admin") &&
-    !profile.roleNames.includes("staff")
-  ) {
+  const elevated =
+    profile && roleNamesInclude(profile.roleNames, "admin", "staff", "super admin");
+
+  if (profile && isClassRepresentative(profile.roleNames) && !elevated) {
     if (!profile.programmeId || profile.yearOfStudy == null) {
-      return errorResponse("Class Representatives must have a programme and year of study assigned to their profile.", 403);
+      return errorResponse(
+        "Class Representatives must have a programme and year of study assigned to their profile.",
+        403,
+      );
     }
     // Force the target to only their programme & year
     finalAudiences = [
@@ -133,15 +137,14 @@ export const POST = withPermission(async (req, ctx) => {
         yearOfStudy: profile.yearOfStudy,
       },
     ];
-  } else if (
-    profile &&
-    (profile.roleNames.includes("daruso") || profile.roleNames.includes("daruso leader")) &&
-    !profile.roleNames.includes("admin") &&
-    !profile.roleNames.includes("staff")
-  ) {
+  } else if (profile && isCollegeScopedLeader(profile.roleNames) && !elevated) {
+    // Daruso_leader / college rep: role.college_id or profile college (incl. via programme)
     const userCollegeId = profile.roleCollegeId ?? profile.collegeId;
     if (!userCollegeId) {
-      return errorResponse("College Reps must have a college assigned to their profile or role.", 403);
+      return errorResponse(
+        "College leaders must have a college assigned to their role or profile.",
+        403,
+      );
     }
     // Force the target to only their college
     finalAudiences = [

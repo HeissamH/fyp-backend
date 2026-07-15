@@ -12,6 +12,9 @@ import {
   getUserPostProfile,
   buildPostAudienceConditions,
   matchingPostIdsSubquery,
+  isClassRepresentative,
+  isCollegeScopedLeader,
+  roleNamesInclude,
 } from "@/lib/utils/post-audience";
 
 async function canViewPost(
@@ -19,7 +22,7 @@ async function canViewPost(
   post: { id: string; authorId: string; status: string },
   profile: NonNullable<Awaited<ReturnType<typeof getUserPostProfile>>>,
 ): Promise<boolean> {
-  if (profile.roleNames.includes("admin") || profile.roleNames.includes("staff")) return true;
+  if (roleNamesInclude(profile.roleNames, "admin", "staff", "super admin")) return true;
   if (post.authorId === userId) return true;
   if (post.status !== "PUBLISHED") return false;
 
@@ -139,14 +142,14 @@ export const PUT = withPermission(async (req, ctx) => {
     if (d.audiences && d.audiences.length > 0) {
       let finalAudiences = d.audiences;
       const profile = await getUserPostProfile(ctx.user.userId);
-      if (
-        profile &&
-        profile.roleNames.includes("Class_representative") &&
-        !profile.roleNames.includes("admin") &&
-        !profile.roleNames.includes("staff")
-      ) {
+      const elevated =
+        profile && roleNamesInclude(profile.roleNames, "admin", "staff", "super admin");
+
+      if (profile && isClassRepresentative(profile.roleNames) && !elevated) {
         if (!profile.programmeId || profile.yearOfStudy == null) {
-          throw new Error("Class Representatives must have a programme and year of study assigned to their profile.");
+          throw new Error(
+            "Class Representatives must have a programme and year of study assigned to their profile.",
+          );
         }
         finalAudiences = [
           {
@@ -155,17 +158,11 @@ export const PUT = withPermission(async (req, ctx) => {
             yearOfStudy: profile.yearOfStudy,
           },
         ];
-      } else if (
-        profile &&
-        (profile.roleNames.includes("daruso") || profile.roleNames.includes("daruso leader")) &&
-        !profile.roleNames.includes("admin") &&
-        !profile.roleNames.includes("staff")
-      ) {
+      } else if (profile && isCollegeScopedLeader(profile.roleNames) && !elevated) {
         const userCollegeId = profile.roleCollegeId ?? profile.collegeId;
         if (!userCollegeId) {
-          throw new Error("College Reps must have a college assigned to their profile or role.");
+          throw new Error("College leaders must have a college assigned to their profile or role.");
         }
-        // Force the target to only their college
         finalAudiences = [
           {
             targetType: "COLLEGE",

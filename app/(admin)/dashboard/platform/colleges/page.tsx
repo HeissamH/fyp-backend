@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useColleges, useCreateCollege, useUpdateCollege, useDeleteCollege } from '../query';
+import { useColleges, useCreateCollege, useUpdateCollege, useDeleteCollege, useProgrammes } from '../query';
 import { DataTable } from '@/components/admin/ui/DataTable';
 import { DataTableSkeleton } from '@/components/admin/ui/DataTableSkeleton';
 import { ColumnDef } from '@tanstack/react-table';
@@ -146,10 +146,14 @@ export default function CollegesPage() {
   const [editTarget, setEditTarget] = useState<any>(null);
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
   const { data, isLoading } = useColleges();
+  const { data: programmesData, isLoading: programmesLoading } = useProgrammes();
   const { mutate: deleteCollege, isPending: isDeleting } = useDeleteCollege();
 
   const colleges: any[] = data?.data || [];
-  const totalProgrammes = colleges.reduce((sum: number, c: any) => sum + (c.programmesCount ?? c.programmes?.length ?? 0), 0);
+  // Colleges API has no nested programme counts — use programmes list total (or meta).
+  const totalProgrammes =
+    programmesData?.meta?.total ??
+    (Array.isArray(programmesData?.data) ? programmesData.data.length : 0);
 
   const columns: ColumnDef<any>[] = [
     {
@@ -191,7 +195,7 @@ export default function CollegesPage() {
       {/* Stat Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '24px' }}>
         <StatCard icon={<Building2 size={20} color="var(--primary)" />} label="Total Colleges" value={isLoading ? '...' : colleges.length} color="var(--primary)" />
-        <StatCard icon={<Building2 size={20} color="#3fb950" />} label="Total Programmes" value={isLoading ? '...' : totalProgrammes} color="#3fb950" />
+        <StatCard icon={<Building2 size={20} color="#3fb950" />} label="Total Programmes" value={isLoading || programmesLoading ? '...' : totalProgrammes} color="#3fb950" />
         <StatCard icon={<Building2 size={20} color="#d29922" />} label="Active Since" value={isLoading ? '...' : (colleges[0] ? new Date(colleges[0].createdAt).getFullYear() : '—')} color="#d29922" />
       </div>
 

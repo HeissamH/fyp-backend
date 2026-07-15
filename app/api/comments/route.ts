@@ -3,9 +3,17 @@ import { db } from "@/lib/db";
 import { comments, users, media, reactions } from "@/lib/db/schema";
 import { eq, and, isNull, desc, sql } from "drizzle-orm";
 import { withAuth } from "@/lib/auth/middleware";
-import { successResponse, errorResponse } from "@/lib/utils/api-response";
+import { successResponse, errorResponse, paginatedResponse } from "@/lib/utils/api-response";
+import { parsePagination } from "@/lib/utils/pagination";
 import { createCommentSchema } from "@/lib/validators/comments";
 import { logAction } from "@/lib/audit";
+
+function isStaffOrAdmin(roleNames: string[]): boolean {
+  return roleNames.some((n) => {
+    const x = n.toLowerCase().replace(/_/g, " ");
+    return x === "admin" || x === "super admin" || x === "staff";
+  });
+}
 
 // ─── Helper: recursively build a nested comment tree ─────────────────────────
 type RawComment = {
@@ -42,14 +50,56 @@ function buildTree(flat: RawComment[]): CommentNode[] {
   return roots;
 }
 
-// ─── GET /api/comments?targetId=X&targetType=Y ───────────────────────────────
+// ─── GET /api/comments?targetId=X&targetType=Y
+//     or /api/comments?recent=1 (staff/admin moderation queue) ────────────────
 export const GET = withAuth(async (req, ctx) => {
   const url = new URL(req.url);
   const targetId = url.searchParams.get("targetId");
   const targetType = url.searchParams.get("targetType");
+  const recent = url.searchParams.get("recent");
+
+  // Flat recent list for admin moderation (no tree)
+  if (recent === "1") {
+    if (!isStaffOrAdmin(ctx.user.roleNames)) {
+      return errorResponse("Forbidden", 403);
+    }
+    const { page, pageSize, offset } = parsePagination(url.searchParams);
+    const typeFilter = url.searchParams.get("targetType");
+
+    const conditions = [isNull(comments.deletedAt)];
+    if (typeFilter) conditions.push(eq(comments.targetType, typeFilter));
+    const whereClause = and(...conditions);
+
+    const totalResult = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(comments)
+      .where(whereClause);
+    const total = Number(totalResult[0].count);
+
+    const list = await db
+      .select({
+        id: comments.id,
+        parentId: comments.parentId,
+        targetId: comments.targetId,
+        targetType: comments.targetType,
+        authorId: users.id,
+        authorName: users.fullName,
+        content: comments.content,
+        createdAt: comments.createdAt,
+        updatedAt: comments.updatedAt,
+      })
+      .from(comments)
+      .leftJoin(users, eq(comments.authorId, users.id))
+      .where(whereClause)
+      .orderBy(desc(comments.createdAt))
+      .limit(pageSize)
+      .offset(offset);
+
+    return paginatedResponse(list, total, page, pageSize);
+  }
 
   if (!targetId || !targetType) {
-    return errorResponse("targetId and targetType are required", 400);
+    return errorResponse("targetId and targetType are required (or use recent=1)", 400);
   }
 
   const flat = await db

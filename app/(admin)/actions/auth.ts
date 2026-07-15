@@ -35,13 +35,26 @@ export async function adminLogin(email: string, password: string) {
   if (!token) return { success: false, message: 'No token returned' };
 
   const cookieStore = await cookies();
-  cookieStore.set('admin_token', token, {
+  const cookieOpts = {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    sameSite: 'lax' as const,
     maxAge: 60 * 60 * 24 * 7, // 7 days
     path: '/',
-  });
+  };
+  cookieStore.set('admin_token', token, cookieOpts);
+
+  // Display name for topbar (httpOnly — read only in server components)
+  if (user && typeof user === 'object') {
+    cookieStore.set(
+      'admin_profile',
+      JSON.stringify({
+        fullName: (user as { fullName?: string }).fullName ?? null,
+        email: (user as { email?: string }).email ?? null,
+      }),
+      cookieOpts,
+    );
+  }
 
   return { success: true, user };
 }
@@ -49,6 +62,7 @@ export async function adminLogin(email: string, password: string) {
 export async function adminLogout() {
   const cookieStore = await cookies();
   cookieStore.delete('admin_token');
+  cookieStore.delete('admin_profile');
   redirect('/login');
 }
 

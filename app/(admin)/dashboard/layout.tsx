@@ -1,39 +1,30 @@
 import { requireAdminSession } from '@/lib/admin/session';
-import { Sidebar } from '@/components/admin/layout/Sidebar';
-import { Topbar } from '@/components/admin/layout/Topbar';
+import { AdminShell } from '@/components/admin/layout/AdminShell';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: {
+    default: 'Dashboard',
+    template: '%s · UDSM Admin',
+  },
+  description: 'UDSM Connect administration panel',
+};
 
 export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  // Ensure the user is authenticated and is an admin before rendering ANY dashboard page
-  await requireAdminSession();
+  const session = await requireAdminSession();
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        minHeight: '100vh',
-        backgroundColor: 'var(--bg)',
-        transition: 'var(--transition-theme)',
+    <AdminShell
+      user={{
+        fullName: session.fullName,
+        email: session.email,
       }}
     >
-      <Sidebar />
-      <div
-        style={{
-          flex: 1,
-          paddingLeft: 'var(--sidebar-w)',
-          display: 'flex',
-          flexDirection: 'column',
-          minWidth: 0,
-        }}
-      >
-        <Topbar />
-        <main style={{ flex: 1, padding: '24px', marginTop: '64px' }}>
-          {children}
-        </main>
-      </div>
-    </div>
+      {children}
+    </AdminShell>
   );
 }

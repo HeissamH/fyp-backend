@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useCreateStory } from '@/app/(admin)/dashboard/stories/query';
 import { uploadMedia } from '@/app/(admin)/actions/media';
 import { X, UploadCloud, Loader2 } from 'lucide-react';
@@ -16,6 +16,14 @@ export function CreateStoryModal({ onClose }: { onClose: () => void }) {
     d.setHours(d.getHours() + 24);
     return d.toISOString().slice(0, 16);
   });
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isUploading && !isCreating) onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose, isUploading, isCreating]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,11 +62,17 @@ export function CreateStoryModal({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <div style={styles.overlay}>
-      <div style={styles.modal}>
+    <div
+      style={styles.overlay}
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !isUploading && !isCreating) onClose();
+      }}
+      role="presentation"
+    >
+      <div style={styles.modal} role="dialog" aria-modal="true">
         <div style={styles.header}>
           <h2 style={styles.title}>Upload Story</h2>
-          <button onClick={onClose} style={styles.closeBtn}><X size={20} /></button>
+          <button type="button" onClick={onClose} style={styles.closeBtn}><X size={20} /></button>
         </div>
         
         <form onSubmit={handleSubmit} style={styles.form}>

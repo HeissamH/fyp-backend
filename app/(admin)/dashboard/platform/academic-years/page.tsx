@@ -77,7 +77,15 @@ export default function AcademicYearsPage() {
   };
 
   const columns: ColumnDef<any>[] = [
-    { accessorKey: 'year', header: 'Academic Year', cell: ({ row }) => <span style={{ fontWeight: 500 }}>{row.original.year}</span> },
+    {
+      accessorKey: 'label',
+      header: 'Academic Year',
+      cell: ({ row }) => (
+        <span style={{ fontWeight: 500 }}>
+          {row.original.label || row.original.year || '—'}
+        </span>
+      ),
+    },
     { accessorKey: 'startDate', header: 'Start', cell: ({ row }) => new Date(row.original.startDate).toLocaleDateString() },
     { accessorKey: 'endDate', header: 'End', cell: ({ row }) => new Date(row.original.endDate).toLocaleDateString() },
     {
@@ -92,10 +100,11 @@ export default function AcademicYearsPage() {
       cell: ({ row }) => {
         const yr = row.original;
         if (yr.isCurrent) return null;
+        const label = yr.label || yr.year || 'year';
         return (
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
             <button
-              onClick={() => handleSetCurrent(yr.id, yr.year)}
+              onClick={() => handleSetCurrent(yr.id, label)}
               disabled={isSettingCurrent}
               style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', backgroundColor: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', color: 'var(--text)', cursor: 'pointer', fontSize: '13px' }}
               title="Set as Current Year"

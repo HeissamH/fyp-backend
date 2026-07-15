@@ -30,6 +30,38 @@ export async function getComments(targetId: string, targetType: CommentTargetTyp
   return json;
 }
 
+export interface RecentComment {
+  id: string;
+  parentId: string | null;
+  targetId: string;
+  targetType: string;
+  authorId: string | null;
+  authorName: string | null;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Staff/admin flat moderation queue */
+export async function getRecentComments(params?: {
+  page?: number;
+  pageSize?: number;
+  targetType?: string;
+}): Promise<{ data: RecentComment[]; meta?: { total: number } }> {
+  const sp = new URLSearchParams({ recent: '1' });
+  sp.set('page', String(params?.page ?? 1));
+  sp.set('pageSize', String(params?.pageSize ?? 40));
+  if (params?.targetType) sp.set('targetType', params.targetType);
+
+  const res = await fetch(`${BASE_URL}/comments?${sp}`, {
+    headers: await getAuthHeaders(),
+    cache: 'no-store',
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.message || 'Failed to fetch recent comments');
+  return json;
+}
+
 // ── POST a new comment (or reply) ─────────────────────────────────────────────
 export async function postComment(data: {
   targetId: string;

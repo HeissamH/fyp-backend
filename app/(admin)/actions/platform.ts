@@ -157,15 +157,36 @@ export async function getAcademicYears() {
   return json;
 }
 
-export async function createAcademicYear(data: { year: string; startDate: string; endDate: string; isCurrent?: boolean }) {
+export async function createAcademicYear(data: {
+  year?: string;
+  label?: string;
+  startDate: string;
+  endDate: string;
+  isCurrent?: boolean;
+}) {
+  // API expects `label`; admin UI historically sent `year`.
+  const label = (data.label || data.year || '').trim();
   const res = await fetch(`${BASE_URL}/academic-years`, {
     method: 'POST',
     headers: await getAuthHeaders(),
-    body: JSON.stringify(data),
+    body: JSON.stringify({
+      label,
+      startDate: data.startDate,
+      endDate: data.endDate,
+    }),
     cache: 'no-store',
   });
   const json = await res.json();
   if (!res.ok) throw new Error(json.message || 'Failed to create academic year');
+
+  // Optionally mark current after create
+  if (data.isCurrent && json?.data?.id) {
+    try {
+      await setCurrentAcademicYear(json.data.id);
+    } catch {
+      // year created; current flag is best-effort
+    }
+  }
   return json;
 }
 

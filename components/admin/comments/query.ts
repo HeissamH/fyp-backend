@@ -3,6 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   getComments,
+  getRecentComments,
   postComment,
   editComment,
   deleteComment,
@@ -14,6 +15,13 @@ export function useComments(targetId: string, targetType: CommentTargetType) {
     queryKey: ['comments', targetId, targetType],
     queryFn: () => getComments(targetId, targetType),
     enabled: !!targetId,
+  });
+}
+
+export function useRecentComments(targetType?: string) {
+  return useQuery({
+    queryKey: ['comments-recent', targetType ?? 'all'],
+    queryFn: () => getRecentComments({ page: 1, pageSize: 40, targetType }),
   });
 }
 
@@ -45,6 +53,7 @@ export function useDeleteComment(targetId: string, targetType: CommentTargetType
     mutationFn: (id: string) => deleteComment(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['comments', targetId, targetType] });
+      qc.invalidateQueries({ queryKey: ['comments-recent'] });
     },
   });
 }

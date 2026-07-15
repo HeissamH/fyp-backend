@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "UDSM Information Dissemination Platform API",
+  title: {
+    default: "UDSM Connect",
+    template: "%s · UDSM Connect",
+  },
+  description: "UDSM Connect platform",
 };
 
 export default function RootLayout({

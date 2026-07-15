@@ -1,4 +1,6 @@
-import React from 'react';
+'use client';
+
+import React, { useEffect } from 'react';
 import { AlertTriangle } from 'lucide-react';
 
 interface ConfirmModalProps {
@@ -18,19 +20,33 @@ export function ConfirmModal({
   onCancel,
   isPending = false,
 }: ConfirmModalProps) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isPending) onCancel();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onCancel, isPending]);
+
   return (
-    <div style={overlay}>
-      <div style={modal}>
+    <div
+      style={overlay}
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !isPending) onCancel();
+      }}
+      role="presentation"
+    >
+      <div style={modal} role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title">
         <div style={iconWrap}>
           <AlertTriangle size={28} color="var(--danger)" />
         </div>
-        <h2 style={titleStyle}>{title}</h2>
+        <h2 id="confirm-modal-title" style={titleStyle}>{title}</h2>
         <p style={msgStyle}>{message}</p>
         <div style={footer}>
-          <button onClick={onCancel} style={cancelBtn} disabled={isPending}>
+          <button type="button" onClick={onCancel} style={cancelBtn} disabled={isPending}>
             Cancel
           </button>
-          <button onClick={onConfirm} style={deleteBtn} disabled={isPending}>
+          <button type="button" onClick={onConfirm} style={deleteBtn} disabled={isPending}>
             {isPending ? 'Deleting...' : confirmLabel}
           </button>
         </div>
@@ -41,9 +57,10 @@ export function ConfirmModal({
 
 const overlay: React.CSSProperties = {
   position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-  backgroundColor: 'rgba(0,0,0,0.65)',
+  backgroundColor: 'var(--overlay)',
   display: 'flex', alignItems: 'center', justifyContent: 'center',
   zIndex: 200,
+  padding: 16,
 };
 const modal: React.CSSProperties = {
   backgroundColor: 'var(--surface)',
@@ -51,7 +68,7 @@ const modal: React.CSSProperties = {
   borderRadius: 'var(--radius-lg)',
   padding: '32px 28px',
   width: '100%', maxWidth: '400px',
-  boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+  boxShadow: 'var(--shadow-lg)',
   textAlign: 'center',
 };
 const iconWrap: React.CSSProperties = {

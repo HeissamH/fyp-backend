@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { requireAdminSession } from '@/lib/admin/session';
 import { cookies } from 'next/headers';
 
@@ -23,42 +24,77 @@ async function fetchStat(endpoint: string, headers: Record<string, string>) {
   }
 }
 
+function totalOf(res: any): number | string {
+  if (res?.meta?.total != null) return res.meta.total;
+  if (Array.isArray(res?.data)) return res.data.length;
+  return '—';
+}
+
 export default async function DashboardOverview() {
   await requireAdminSession();
   const headers = await getStatsHeaders();
 
-  // Fetch all stats in parallel
-  const [usersRes, announcementsRes, eventsRes, feedbackRes] = await Promise.all([
-    fetchStat('/users?pageSize=1', headers),
-    fetchStat('/announcements?pageSize=1', headers),
-    fetchStat('/events?status=UPCOMING&pageSize=1', headers),
-    fetchStat('/feedback?status=PENDING&pageSize=1', headers),
-  ]);
+  const [usersRes, postsRes, announcementsRes, eventsRes, feedbackRes, storiesRes, lostFoundRes] =
+    await Promise.all([
+      fetchStat('/users?pageSize=1', headers),
+      fetchStat('/posts?pageSize=1', headers),
+      fetchStat('/announcements?pageSize=1', headers),
+      fetchStat('/events?status=UPCOMING&pageSize=1', headers),
+      // Admin list (paginated meta) — not the user-scoped /feedback endpoint
+      fetchStat('/admin/feedback?status=PENDING&pageSize=1', headers),
+      fetchStat('/stories', headers),
+      fetchStat('/lost-found?status=OPEN&pageSize=1', headers),
+    ]);
 
   const stats = [
     {
       title: 'Total Users',
-      value: usersRes?.meta?.total ?? '—',
+      value: totalOf(usersRes),
       sub: 'Registered students & staff',
       color: '#388bfd',
+      href: '/dashboard/users',
+    },
+    {
+      title: 'Posts',
+      value: totalOf(postsRes),
+      sub: 'Mobile feed posts',
+      color: '#a371f7',
+      href: '/dashboard/posts',
     },
     {
       title: 'Announcements',
-      value: announcementsRes?.meta?.total ?? '—',
-      sub: 'All platform announcements',
+      value: totalOf(announcementsRes),
+      sub: 'Official announcements',
       color: '#3fb950',
+      href: '/dashboard/announcements',
     },
     {
       title: 'Upcoming Events',
-      value: eventsRes?.meta?.total ?? '—',
+      value: totalOf(eventsRes),
       sub: 'Scheduled events ahead',
       color: '#e3b341',
+      href: '/dashboard/events',
     },
     {
       title: 'Pending Feedback',
-      value: feedbackRes?.meta?.total ?? '—',
+      value: totalOf(feedbackRes),
       sub: 'Awaiting admin review',
       color: '#ff7b72',
+      href: '/dashboard/feedback',
+    },
+    {
+      title: 'Active Stories',
+      value: totalOf(storiesRes),
+      sub: 'Not yet expired',
+      color: '#f778ba',
+      href: '/dashboard/stories',
+    },
+    {
+      title: 'Open Lost & Found',
+      value: totalOf(lostFoundRes),
+      sub: 'Unresolved items',
+      color: '#79c0ff',
+      href: '/dashboard/lost-and-found',
     },
   ];
 
@@ -69,32 +105,44 @@ export default async function DashboardOverview() {
           Overview
         </h1>
         <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '14px' }}>
-          Platform summary at a glance.
+          Platform summary at a glance. Click a card to open that section.
         </p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px', marginBottom: '32px' }}>
+      <div
+        className="admin-stats-grid"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+          gap: '16px',
+          marginBottom: '32px',
+        }}
+      >
         {stats.map((s) => (
-          <div
+          <Link
             key={s.title}
+            href={s.href}
             style={{
               backgroundColor: 'var(--surface)',
-              padding: '24px',
+              padding: '20px',
               borderRadius: 'var(--radius)',
               border: '1px solid var(--border)',
               borderLeft: `3px solid ${s.color}`,
+              textDecoration: 'none',
+              color: 'inherit',
+              transition: 'box-shadow 0.15s, transform 0.15s',
             }}
           >
-            <h3 style={{ fontSize: '13px', color: 'var(--text-muted)', margin: '0 0 12px 0', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <h3 style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '0 0 10px 0', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               {s.title}
             </h3>
-            <div style={{ fontSize: '32px', fontWeight: 700, color: 'var(--text)', lineHeight: 1 }}>
+            <div style={{ fontSize: '28px', fontWeight: 700, color: 'var(--text)', lineHeight: 1 }}>
               {s.value}
             </div>
             <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '8px' }}>
               {s.sub}
             </div>
-          </div>
+          </Link>
         ))}
       </div>
 
@@ -102,19 +150,21 @@ export default async function DashboardOverview() {
         <h3 style={{ fontSize: '15px', fontWeight: 600, margin: '0 0 12px 0', color: 'var(--text)' }}>Quick Links</h3>
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
           {[
-            { label: '+ New Announcement', href: '/dashboard/announcements/create', color: 'var(--primary)' },
-            { label: 'Manage Users', href: '/dashboard/users', color: 'var(--surface-2)' },
-            { label: 'View Audit Logs', href: '/dashboard/audit-logs', color: 'var(--surface-2)' },
-            { label: 'Review Feedback', href: '/dashboard/feedback', color: 'var(--surface-2)' },
+            { label: '+ New Announcement', href: '/dashboard/announcements/create', color: 'var(--primary)', primary: true },
+            { label: 'Moderate Posts', href: '/dashboard/posts', color: 'var(--surface-2)', primary: false },
+            { label: 'Manage Users', href: '/dashboard/users', color: 'var(--surface-2)', primary: false },
+            { label: 'Review Feedback', href: '/dashboard/feedback', color: 'var(--surface-2)', primary: false },
+            { label: 'Recent Comments', href: '/dashboard/comments', color: 'var(--surface-2)', primary: false },
+            { label: 'Audit Logs', href: '/dashboard/audit-logs', color: 'var(--surface-2)', primary: false },
           ].map(link => (
-            <a
-              key={link.href}
+            <Link
+              key={link.href + link.label}
               href={link.href}
               style={{
                 padding: '8px 16px',
                 backgroundColor: link.color,
                 borderRadius: 'var(--radius-sm)',
-                color: link.color === 'var(--primary)' ? '#fff' : 'var(--text)',
+                color: link.primary ? '#fff' : 'var(--text)',
                 fontSize: '14px',
                 fontWeight: 500,
                 textDecoration: 'none',
@@ -122,7 +172,7 @@ export default async function DashboardOverview() {
               }}
             >
               {link.label}
-            </a>
+            </Link>
           ))}
         </div>
       </div>

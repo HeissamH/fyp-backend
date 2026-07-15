@@ -324,6 +324,7 @@ async function main() {
         email: adminEmail,
         password: hashedUserPassword,
         isActive: true,
+        emailVerifiedAt: new Date(),
       })
       .onConflictDoNothing({ target: users.email });
 
@@ -415,6 +416,7 @@ async function main() {
           programmeId: useProg && csProgramme ? csProgramme.id : null,
           yearOfStudy: d.yearOfStudy ?? null,
           isActive: true,
+          emailVerifiedAt: new Date(),
         })
         .onConflictDoNothing({ target: users.email });
 

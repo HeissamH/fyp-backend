@@ -131,6 +131,8 @@ export const POST = withPermission(async (req: NextRequest, ctx) => {
         programmeId: data.programmeId,
         yearOfStudy: data.yearOfStudy,
         isActive: true,
+        // Admin-created users (staff/lecturer/student) skip self-serve webmail OTP.
+        emailVerifiedAt: new Date(),
       })
       .returning();
 

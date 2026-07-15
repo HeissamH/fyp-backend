@@ -32,6 +32,12 @@ export const users = pgTable(
     avatarUrl: text("avatar_url"),
     phoneNumber: varchar("phone_number", { length: 20 }),
     isActive: boolean("is_active").default(true).notNull(),
+    /**
+     * Set when the user verifies ownership of their email (OTP to webmail).
+     * Existing accounts are grandfathered (backfilled on migration).
+     * New self-registrations stay null until OTP verification succeeds.
+     */
+    emailVerifiedAt: timestamp("email_verified_at"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
     deletedAt: timestamp("deleted_at"),

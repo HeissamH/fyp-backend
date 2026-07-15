@@ -5,6 +5,7 @@ import {
   getPublicPost,
   siteBaseUrl,
 } from "@/lib/share/public-post";
+import { OpenInApp } from "@/components/share/OpenInApp";
 
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -43,6 +44,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       description,
       ...(post.imageUrl ? { images: [post.imageUrl] } : {}),
     },
+    // Hint to Android that this URL is associated with the app
+    other: {
+      "al:android:url": url,
+      "al:android:package": "tz.ac.udsm.udsm_connect",
+      "al:android:app_name": "UDSM Connect",
+    },
   };
 }
 
@@ -54,8 +61,6 @@ export default async function PublicPostPage({ params }: PageProps) {
   const title = post.title?.trim() || "Campus update";
   const base = siteBaseUrl();
   const pageUrl = `${base}/posts/${post.id}`;
-  // Prefer opening the installed Android app when possible; falls back to this page.
-  const appIntent = `intent://posts/${post.id}#Intent;scheme=https;package=tz.ac.udsm.udsm_connect;S.browser_fallback_url=${encodeURIComponent(pageUrl)};end`;
 
   const published =
     post.publishedAt != null
@@ -155,21 +160,7 @@ export default async function PublicPostPage({ params }: PageProps) {
             gap: 12,
           }}
         >
-          <a
-            href={appIntent}
-            style={{
-              display: "block",
-              textAlign: "center",
-              background: "#2563eb",
-              color: "#fff",
-              textDecoration: "none",
-              fontWeight: 600,
-              padding: "14px 18px",
-              borderRadius: 12,
-            }}
-          >
-            Open in UDSM Connect app
-          </a>
+          <OpenInApp postId={post.id} pageUrl={pageUrl} />
           <p
             style={{
               margin: 0,
@@ -179,8 +170,8 @@ export default async function PublicPostPage({ params }: PageProps) {
               lineHeight: 1.5,
             }}
           >
-            Have the app installed? Use the button above. Otherwise you can read
-            the full post on this page.
+            If the app is installed, this link should open the post there.
+            Otherwise you can read the full post on this page.
           </p>
         </div>
       </div>

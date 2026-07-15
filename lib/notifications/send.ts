@@ -119,8 +119,11 @@ export async function pushToUsers(userIds: string[], payload: NotificationPayloa
 }
 
 export async function notifyUsers(userIds: string[], payload: NotificationPayload): Promise<void> {
-  await createInboxNotifications(userIds, payload);
-  await pushToUsers(userIds, payload).catch((err) => {
-    console.error("FCM push failed:", err);
-  });
+  // Parallel: write inbox + fire FCM together so popups aren't delayed by DB insert.
+  await Promise.all([
+    createInboxNotifications(userIds, payload),
+    pushToUsers(userIds, payload).catch((err) => {
+      console.error("FCM push failed:", err);
+    }),
+  ]);
 }

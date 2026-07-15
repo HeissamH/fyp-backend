@@ -13,6 +13,7 @@ function excerpt(text: string, max = 120): string {
 
 /** Fan-out inbox + push when a post is published. Safe to call async after HTTP response. */
 export async function notifyPostPublished(postId: string): Promise<void> {
+  const started = Date.now();
   try {
     const [post] = await db
       .select({
@@ -29,7 +30,10 @@ export async function notifyPostPublished(postId: string): Promise<void> {
     if (!post || post.status !== "PUBLISHED") return;
 
     const userIds = await resolveRecipientUserIds(postId, { excludeUserId: post.authorId });
-    if (userIds.length === 0) return;
+    if (userIds.length === 0) {
+      console.warn(`notifyPostPublished: no recipients for post ${postId}`);
+      return;
+    }
 
     const body = post.title?.trim() ? post.title.trim() : excerpt(post.content);
 
@@ -41,6 +45,9 @@ export async function notifyPostPublished(postId: string): Promise<void> {
         type: NOTIFICATION_TYPES.POST,
         targetId: post.id,
       }),
+    );
+    console.log(
+      `notifyPostPublished ok post=${postId} recipients=${userIds.length} ms=${Date.now() - started}`,
     );
   } catch (err) {
     console.error(`notifyPostPublished failed for ${postId}:`, err);

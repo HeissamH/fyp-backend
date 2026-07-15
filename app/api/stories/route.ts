@@ -7,7 +7,6 @@ import { withAuth, withPermission } from "@/lib/auth/middleware";
 import { successResponse, errorResponse } from "@/lib/utils/api-response";
 import { createStorySchema } from "@/lib/validators/stories";
 import { logAction } from "@/lib/audit";
-import { after } from "next/server";
 import { notifyUsers } from "@/lib/notifications/send";
 import { NOTIFICATION_TYPES, buildNotificationPayload } from "@/lib/notifications/types";
 import { filterByPreferences } from "@/lib/utils/filter-by-preferences";
@@ -153,14 +152,13 @@ export const POST = withPermission(async (req, ctx) => {
     const caption = d.caption;
     const collegeId = resolvedCollegeId;
     const authorId = ctx.user.userId;
-    after(async () => {
-      // Include students whose college is only via programme (users.college_id often null).
-      const collegeUserIds = await getUserIdsInCollege(collegeId, {
-        excludeUserId: authorId,
-      });
-      const recipientIds = await filterByPreferences(collegeUserIds, "stories");
-      if (recipientIds.length === 0) return;
 
+    // Await so serverless doesn't freeze before FCM finishes (campus lists are small).
+    const collegeUserIds = await getUserIdsInCollege(collegeId, {
+      excludeUserId: authorId,
+    });
+    const recipientIds = await filterByPreferences(collegeUserIds, "stories");
+    if (recipientIds.length > 0) {
       await notifyUsers(
         recipientIds,
         buildNotificationPayload({
@@ -170,7 +168,7 @@ export const POST = withPermission(async (req, ctx) => {
           targetId: storyId,
         }),
       );
-    });
+    }
 
     return successResponse(created, "Story created successfully", 201);
   } catch (error: any) {

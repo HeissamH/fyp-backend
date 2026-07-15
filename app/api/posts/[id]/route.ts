@@ -5,7 +5,6 @@ import { withAuth, withPermission } from "@/lib/auth/middleware";
 import { successResponse, errorResponse } from "@/lib/utils/api-response";
 import { updatePostSchema } from "@/lib/validators/posts";
 import { logAction } from "@/lib/audit";
-import { after } from "next/server";
 import { notifyPostPublished } from "@/lib/notifications/notify-post-published";
 import {
   getActiveGroupIdsForUser,
@@ -198,7 +197,7 @@ export const PUT = withPermission(async (req, ctx) => {
   });
 
   if (publishedAt !== undefined && publishedAt !== null) {
-    after(() => notifyPostPublished(id));
+    await notifyPostPublished(id);
   }
 
   return successResponse(updated, "Post updated successfully");

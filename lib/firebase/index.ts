@@ -1,72 +1,117 @@
 import admin from "firebase-admin";
 
 let initialized = false;
+let initError: string | null = null;
 
 /**
- * Vercel often stores PEM keys with:
- * - literal `\n` sequences
- * - surrounding double quotes
- * - accidental double-escaping (`\\n`)
- * Broken keys surface as: Failed to parse private key / DECODER routines::unsupported
+ * Vercel often corrupts multi-line PEM keys. Prefer, in order:
+ * 1) FIREBASE_SERVICE_ACCOUNT_BASE64 — base64 of full service-account JSON
+ * 2) FIREBASE_SERVICE_ACCOUNT_JSON — full JSON string
+ * 3) FIREBASE_PRIVATE_KEY (+ PROJECT_ID + CLIENT_EMAIL), with PEM normalization
+ * 4) FIREBASE_PRIVATE_KEY_BASE64 — base64 of PEM only
  */
-export function normalizeFirebasePrivateKey(raw: string | undefined): string | undefined {
-  // Prefer base64 (single-line, Vercel-safe) when provided
-  const b64 = process.env.FIREBASE_PRIVATE_KEY_BASE64?.trim();
-  if (b64) {
-    try {
-      return Buffer.from(b64, "base64").toString("utf8").trim();
-    } catch (err) {
-      console.error("FIREBASE_PRIVATE_KEY_BASE64 decode failed:", err);
-    }
-  }
-
-  if (!raw) return undefined;
-
+function normalizePem(raw: string): string {
   let key = raw.trim();
-
-  // Strip wrapping quotes from dashboard paste
   if (
     (key.startsWith('"') && key.endsWith('"')) ||
     (key.startsWith("'") && key.endsWith("'"))
   ) {
     key = key.slice(1, -1);
   }
-
-  // Normalize Windows newlines then expand escaped \n
   key = key.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
-  // Apply twice for double-escaped env values
-  key = key.replace(/\\n/g, "\n").replace(/\\n/g, "\n");
+  // Expand escaped newlines (once or twice for double-escaped Vercel values)
+  for (let i = 0; i < 3; i++) {
+    if (key.includes("\\n")) key = key.replace(/\\n/g, "\n");
+    else break;
+  }
+  return key.trim();
+}
 
-  if (!key.includes("BEGIN PRIVATE KEY") && !key.includes("BEGIN RSA PRIVATE KEY")) {
-    console.error(
-      "Firebase private key missing PEM headers after normalize — set FIREBASE_PRIVATE_KEY_BASE64 on Vercel",
-    );
+function loadServiceAccount(): admin.ServiceAccount | null {
+  const saB64 = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64?.trim();
+  if (saB64) {
+    try {
+      const json = JSON.parse(Buffer.from(saB64, "base64").toString("utf8")) as {
+        project_id?: string;
+        client_email?: string;
+        private_key?: string;
+      };
+      if (json.project_id && json.client_email && json.private_key) {
+        return {
+          projectId: json.project_id,
+          clientEmail: json.client_email,
+          privateKey: normalizePem(json.private_key),
+        };
+      }
+    } catch (err) {
+      console.error("FIREBASE_SERVICE_ACCOUNT_BASE64 parse failed:", err);
+    }
   }
 
-  return key;
+  const saJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON?.trim();
+  if (saJson) {
+    try {
+      const json = JSON.parse(saJson) as {
+        project_id?: string;
+        client_email?: string;
+        private_key?: string;
+      };
+      if (json.project_id && json.client_email && json.private_key) {
+        return {
+          projectId: json.project_id,
+          clientEmail: json.client_email,
+          privateKey: normalizePem(json.private_key),
+        };
+      }
+    } catch (err) {
+      console.error("FIREBASE_SERVICE_ACCOUNT_JSON parse failed:", err);
+    }
+  }
+
+  const projectId = process.env.FIREBASE_PROJECT_ID?.trim();
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL?.trim();
+  let privateKey =
+    process.env.FIREBASE_PRIVATE_KEY_BASE64?.trim()
+      ? Buffer.from(process.env.FIREBASE_PRIVATE_KEY_BASE64.trim(), "base64").toString("utf8")
+      : process.env.FIREBASE_PRIVATE_KEY;
+
+  if (projectId && clientEmail && privateKey) {
+    return {
+      projectId,
+      clientEmail,
+      privateKey: normalizePem(privateKey),
+    };
+  }
+
+  return null;
 }
 
 export function getFirebaseMessaging(): admin.messaging.Messaging {
-  if (!initialized) {
-    const projectId = process.env.FIREBASE_PROJECT_ID?.trim();
-    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL?.trim();
-    const privateKey = normalizeFirebasePrivateKey(process.env.FIREBASE_PRIVATE_KEY);
+  if (initError) {
+    throw new Error(initError);
+  }
 
-    if (!projectId || !clientEmail || !privateKey) {
-      throw new Error("Firebase credentials are not configured");
+  if (!initialized) {
+    const sa = loadServiceAccount();
+    if (!sa?.projectId || !sa.clientEmail || !sa.privateKey) {
+      initError = "Firebase credentials are not configured";
+      throw new Error(initError);
     }
 
     if (admin.apps.length === 0) {
       try {
         admin.initializeApp({
-          credential: admin.credential.cert({
-            projectId,
-            clientEmail,
-            privateKey,
-          }),
+          credential: admin.credential.cert(sa),
         });
       } catch (err) {
-        console.error("Firebase Admin initialize failed:", err);
+        initError =
+          err instanceof Error
+            ? err.message
+            : "Firebase Admin initialize failed";
+        console.error(
+          "Firebase Admin initialize failed — fix FIREBASE_SERVICE_ACCOUNT_BASE64 on Vercel:",
+          err,
+        );
         throw err;
       }
     }
@@ -77,9 +122,27 @@ export function getFirebaseMessaging(): admin.messaging.Messaging {
 }
 
 export function isFirebaseConfigured(): boolean {
-  return Boolean(
-    process.env.FIREBASE_PROJECT_ID?.trim() &&
-      process.env.FIREBASE_CLIENT_EMAIL?.trim() &&
-      process.env.FIREBASE_PRIVATE_KEY?.trim(),
-  );
+  if (initError) return false;
+  return loadServiceAccount() != null;
+}
+
+/** Non-secret diagnostics for /api health checks */
+export function getFirebaseConfigStatus(): {
+  configured: boolean;
+  source: string | null;
+  initError: string | null;
+} {
+  if (process.env.FIREBASE_SERVICE_ACCOUNT_BASE64?.trim()) {
+    return { configured: true, source: "SERVICE_ACCOUNT_BASE64", initError };
+  }
+  if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON?.trim()) {
+    return { configured: true, source: "SERVICE_ACCOUNT_JSON", initError };
+  }
+  if (process.env.FIREBASE_PRIVATE_KEY_BASE64?.trim()) {
+    return { configured: true, source: "PRIVATE_KEY_BASE64", initError };
+  }
+  if (process.env.FIREBASE_PRIVATE_KEY?.trim()) {
+    return { configured: true, source: "PRIVATE_KEY", initError };
+  }
+  return { configured: false, source: null, initError };
 }

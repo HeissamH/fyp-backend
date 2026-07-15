@@ -32,22 +32,40 @@ export async function createInboxNotifications(
 }
 
 export async function pushToUsers(userIds: string[], payload: NotificationPayload): Promise<void> {
-  if (!isFirebaseConfigured() || userIds.length === 0) return;
+  if (userIds.length === 0) return;
+
+  if (!isFirebaseConfigured()) {
+    console.error(
+      "FCM skipped: FIREBASE_PROJECT_ID / CLIENT_EMAIL / PRIVATE_KEY not set on this environment",
+    );
+    return;
+  }
 
   const tokens = await db
     .select({ id: notificationTokens.id, fcmToken: notificationTokens.fcmToken })
     .from(notificationTokens)
     .where(inArray(notificationTokens.userId, userIds));
 
-  if (tokens.length === 0) return;
+  if (tokens.length === 0) {
+    console.warn(`FCM skipped: no device tokens for ${userIds.length} user(s)`);
+    return;
+  }
 
-  const messaging = getFirebaseMessaging();
+  let messaging: ReturnType<typeof getFirebaseMessaging>;
+  try {
+    messaging = getFirebaseMessaging();
+  } catch (err) {
+    console.error("FCM init failed (check PRIVATE_KEY PEM format on Vercel):", err);
+    return;
+  }
+
   const staleTokenIds: string[] = [];
+  let successCount = 0;
+  let failCount = 0;
 
   for (let i = 0; i < tokens.length; i += FCM_CHUNK) {
     const chunk = tokens.slice(i, i + FCM_CHUNK);
     // channelId must match Flutter `highImportanceChannelId` (udsm_alerts_v2).
-    // High priority + default sound is required for Android heads-up / banners.
     const response = await messaging.sendEachForMulticast({
       tokens: chunk.map((t) => t.fcmToken),
       notification: {
@@ -70,19 +88,23 @@ export async function pushToUsers(userIds: string[], payload: NotificationPayloa
           defaultVibrateTimings: true,
           notificationCount: 1,
         },
-        ttl: 60 * 60 * 24 * 1000, // 24h
+        ttl: 60 * 60 * 24 * 1000,
       },
     });
 
     response.responses.forEach((res, idx) => {
-      if (!res.success) {
-        const code = res.error?.code;
-        if (
-          code === "messaging/registration-token-not-registered" ||
-          code === "messaging/invalid-registration-token"
-        ) {
-          staleTokenIds.push(chunk[idx].id);
-        }
+      if (res.success) {
+        successCount += 1;
+        return;
+      }
+      failCount += 1;
+      const code = res.error?.code;
+      console.error(`FCM token send failed: ${code} ${res.error?.message ?? ""}`);
+      if (
+        code === "messaging/registration-token-not-registered" ||
+        code === "messaging/invalid-registration-token"
+      ) {
+        staleTokenIds.push(chunk[idx].id);
       }
     });
   }
@@ -90,6 +112,10 @@ export async function pushToUsers(userIds: string[], payload: NotificationPayloa
   if (staleTokenIds.length > 0) {
     await db.delete(notificationTokens).where(inArray(notificationTokens.id, staleTokenIds));
   }
+
+  console.log(
+    `FCM done type=${payload.type} users=${userIds.length} tokens=${tokens.length} ok=${successCount} fail=${failCount}`,
+  );
 }
 
 export async function notifyUsers(userIds: string[], payload: NotificationPayload): Promise<void> {

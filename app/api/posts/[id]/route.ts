@@ -65,7 +65,22 @@ export const GET = withAuth(async (_req, ctx) => {
       likeCount: sql<number>`CAST((SELECT count(*) FROM ${reactions} WHERE ${reactions.targetId} = ${posts.id} AND ${reactions.targetType} = 'POST') AS INT)`,
       commentCount: sql<number>`CAST((SELECT count(*) FROM ${comments} WHERE ${comments.targetId} = ${posts.id} AND ${comments.targetType} = 'ANNOUNCEMENT') AS INT)`,
       isLiked: sql<boolean>`EXISTS(SELECT 1 FROM ${reactions} WHERE ${reactions.targetId} = ${posts.id} AND ${reactions.targetType} = 'POST' AND ${reactions.userId} = ${userId})`,
-      roleName: sql<string>`(SELECT r.name FROM ${userRoles} ur JOIN ${roles} r ON ur.role_id = r.id WHERE ur.user_id = ${users.id} AND ur.revoked_at IS NULL ORDER BY r.name ASC LIMIT 1)`,
+      roleName: sql<string>`(
+        SELECT r.name FROM ${userRoles} ur
+        JOIN ${roles} r ON ur.role_id = r.id
+        WHERE ur.user_id = ${users.id} AND ur.revoked_at IS NULL
+        ORDER BY CASE
+          WHEN lower(replace(r.name, '_', ' ')) IN ('admin', 'super admin') THEN 0
+          WHEN lower(r.name) LIKE '%daruso%' OR lower(replace(r.name, '_', ' ')) LIKE '%college rep%' THEN 1
+          WHEN lower(replace(r.name, '_', ' ')) LIKE '%class rep%' THEN 2
+          WHEN lower(r.name) LIKE '%lecturer%' THEN 3
+          WHEN lower(replace(r.name, '_', ' ')) = 'staff' THEN 4
+          WHEN lower(r.name) LIKE '%sports%' THEN 5
+          WHEN lower(r.name) = 'student' THEN 100
+          ELSE 50
+        END ASC, r.name ASC
+        LIMIT 1
+      )`,
     })
     .from(posts)
     .leftJoin(users, eq(posts.authorId, users.id))

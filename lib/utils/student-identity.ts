@@ -54,7 +54,7 @@ export function validateStudentRegistrationIdentity(
     return {
       field: "email",
       message:
-        "Use your official UDSM student webmail ending with @udsm.ac.tz.",
+        "Use your official UDSM student mail ending with @udsm.ac.tz (login at https://studentmail.udsm.ac.tz/).",
     };
   }
 
@@ -74,7 +74,7 @@ export function validateStudentRegistrationIdentity(
   if (emailYy !== expectedYy) {
     return {
       field: "email",
-      message: `Your email year (_${emailYy}) must match your registration year (${admissionYear} → _${expectedYy}). Use your official UDSM student webmail.`,
+      message: `Your email year (_${emailYy}) must match your registration year (${admissionYear} → _${expectedYy}). Use the address from https://studentmail.udsm.ac.tz/.`,
     };
   }
 

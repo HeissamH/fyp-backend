@@ -71,14 +71,15 @@ function deliveryMessage(event: string, to: string): string {
   if (event === "suppressed") {
     return (
       `Email to ${to} is blocked by our mail provider (previous bounce). ` +
-      `If your UDSM webmail is active, ask an admin to clear the suppression and resend.`
+      `Log in once at https://studentmail.udsm.ac.tz/ to activate the mailbox, ` +
+      `then ask an admin to clear the suppression and use Resend code.`
     );
   }
   if (event === "bounced") {
     return (
-      `UDSM mail servers rejected the message to ${to}. ` +
-      `Activate your student webmail at studentmail.udsm.ac.tz (login once), ` +
-      `confirm the address is exact, then try Resend code again.`
+      `UDSM student mail rejected the message to ${to}. ` +
+      `Open https://studentmail.udsm.ac.tz/ and log in once to activate your mailbox, ` +
+      `confirm the address is exact, then tap Resend code.`
     );
   }
   return `Could not deliver email to ${to} (${event}).`;
@@ -150,10 +151,14 @@ export async function sendOtpEmail(
     const html = `
       <div style="font-family: sans-serif; padding: 20px; max-width: 480px;">
         <h2 style="color:#1565C0;">Verify your UDSM Connect account</h2>
-        <p>Enter this code in the app to confirm you own this UDSM webmail address:</p>
+        <p>Enter this code in the UDSM Connect app to confirm you own this student mail address.</p>
         <p style="font-size:28px;letter-spacing:6px;font-weight:700;">${otpCode}</p>
         <p>This code expires in <strong>${minutes} minutes</strong>.</p>
-        <p style="color:#666;font-size:13px;">If you did not create an account, you can ignore this email.</p>
+        <p style="color:#666;font-size:13px;">
+          You can read this message at
+          <a href="https://studentmail.udsm.ac.tz/">https://studentmail.udsm.ac.tz/</a>.
+          If you did not create an account, ignore this email.
+        </p>
       </div>
     `;
     return await sendEmail({ to, subject, html, text });

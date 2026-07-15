@@ -1535,6 +1535,76 @@ paths:
                 data: {}
       tags:
         - Categories
+  /event-categories/{id}:
+    put:
+      summary: Update an event category (admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                iconName:
+                  type: string
+            example:
+              name: Sports & Entertainment
+              iconName: sports
+      responses:
+        "200":
+          description: Event category updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Event category updated successfully
+      tags:
+        - Categories
+    delete:
+      summary: Delete an event category (admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Event category deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Event category deleted successfully
+        "409":
+          description: Category has events assigned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                message: Cannot delete category that has events assigned to it
+      tags:
+        - Categories
   /announcements:
     get:
       summary: Get personalized announcement feed

@@ -37,6 +37,7 @@ const NAV_ITEMS = [
   { label: 'Departments', href: '/dashboard/platform/departments', icon: LayoutDashboard },
   { label: 'Programmes', href: '/dashboard/platform/programmes', icon: BookOpen },
   { label: 'Academic Years', href: '/dashboard/platform/academic-years', icon: GraduationCap },
+  { label: 'Event Categories', href: '/dashboard/event-categories', icon: Calendar },
   
   { section: 'System' },
   { label: 'Roles & Perms', href: '/dashboard/roles', icon: ShieldAlert },

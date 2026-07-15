@@ -47,7 +47,7 @@ export async function sendEmail({
   }
 
   // Resend accepts the API call even when the address is suppressed, and
-  // campus MX (udsm.ac.tz) often hard-bounces a few seconds later. Poll briefly.
+  // campus MX may hard-bounce a few seconds later. Poll briefly.
   const delivery = await waitForDeliveryStatus(emailId);
   if (
     delivery === "bounced" ||

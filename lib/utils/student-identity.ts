@@ -1,22 +1,24 @@
 /**
  * UDSM student identity rules for self-registration.
  *
- * Reg example:  2022-04-13802  → YYYY-XX-NNNNN
- * Email example: samuel.hebron_22@udsm.ac.tz
+ * Reg example:   2022-04-13802  → YYYY-XX-NNNNN
+ * Email example: samuel.hebron_22@student.udsm.ac.tz
  * Rule: email _YY must equal last 2 digits of reg year (2022 → 22).
+ *
+ * Student mailbox portal: https://studentmail.udsm.ac.tz/
  */
 
-export const UDSM_STUDENT_EMAIL_DOMAIN = "udsm.ac.tz";
+export const UDSM_STUDENT_EMAIL_DOMAIN = "student.udsm.ac.tz";
 
 /** YYYY-XX-NNNNN (serial 5+ digits) */
 export const REG_NUMBER_PATTERN = /^(\d{4})-(\d{2})-(\d{5,})$/;
 
 /**
- * local-part must end with _YY before @udsm.ac.tz
- * e.g. firstname.lastname_22@udsm.ac.tz
+ * local-part must end with _YY before @student.udsm.ac.tz
+ * e.g. firstname.lastname_22@student.udsm.ac.tz
  */
 export const STUDENT_EMAIL_PATTERN =
-  /^[a-z0-9]+(?:[._][a-z0-9]+)*_(\d{2})@udsm\.ac\.tz$/i;
+  /^[a-z0-9]+(?:[._][a-z0-9]+)*_(\d{2})@student\.udsm\.ac\.tz$/i;
 
 export function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
@@ -54,7 +56,7 @@ export function validateStudentRegistrationIdentity(
     return {
       field: "email",
       message:
-        "Use your official UDSM student mail ending with @udsm.ac.tz (login at https://studentmail.udsm.ac.tz/).",
+        "Use your official UDSM student mail ending with @student.udsm.ac.tz (login at https://studentmail.udsm.ac.tz/).",
     };
   }
 
@@ -63,7 +65,7 @@ export function validateStudentRegistrationIdentity(
     return {
       field: "email",
       message:
-        "Student email must look like firstname.lastname_YY@udsm.ac.tz (e.g. samuel.hebron_22@udsm.ac.tz).",
+        "Student email must look like firstname.lastname_YY@student.udsm.ac.tz (e.g. samuel.hebron_22@student.udsm.ac.tz).",
     };
   }
 

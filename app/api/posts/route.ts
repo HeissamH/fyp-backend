@@ -15,6 +15,7 @@ import {
   matchingPostIdsSubquery,
   isClassRepresentative,
   isCollegeScopedLeader,
+  isDepartmentScopedStaff,
   roleNamesInclude,
 } from "@/lib/utils/post-audience";
 
@@ -119,8 +120,9 @@ export const POST = withPermission(async (req, ctx) => {
 
   let finalAudiences = d.audiences;
   const profile = await getUserPostProfile(ctx.user.userId);
+  // Only platform admins may pick free audiences; staff/lecturer are department-scoped.
   const elevated =
-    profile && roleNamesInclude(profile.roleNames, "admin", "staff", "super admin");
+    profile && roleNamesInclude(profile.roleNames, "admin", "super admin");
 
   if (profile && isClassRepresentative(profile.roleNames) && !elevated) {
     if (!profile.programmeId || profile.yearOfStudy == null) {
@@ -151,6 +153,19 @@ export const POST = withPermission(async (req, ctx) => {
       {
         targetType: "COLLEGE",
         collegeId: userCollegeId,
+      },
+    ];
+  } else if (profile && isDepartmentScopedStaff(profile.roleNames) && !elevated) {
+    if (!profile.departmentId) {
+      return errorResponse(
+        "Lecturers and department staff must have a department assigned to their profile.",
+        403,
+      );
+    }
+    finalAudiences = [
+      {
+        targetType: "DEPARTMENT",
+        departmentId: profile.departmentId,
       },
     ];
   }

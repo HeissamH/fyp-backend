@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
-import { useColleges } from '@/app/(admin)/dashboard/platform/query';
+import { useColleges, useDepartments } from '@/app/(admin)/dashboard/platform/query';
 
 // Roles that represent a college — require a college to be specified on assignment
 const COLLEGE_SCOPED_ROLES = ['daruso_leader', 'college_rep', 'college_leader'];
@@ -214,10 +214,13 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
   const { mutate: revokeRole, isPending: revoking } = useRevokeUserRole();
   const [roleToAddId, setRoleToAddId] = useState('');
   const [roleCollegeId, setRoleCollegeId] = useState('');
+  const [editDepartmentId, setEditDepartmentId] = useState<string>('');
+  const [deptCollegeFilter, setDeptCollegeFilter] = useState<string>('');
 
   const user = data?.data;
   const roles = rolesData?.data || [];
   const colleges = collegesData?.data || [];
+  const { data: departmentsData } = useDepartments(deptCollegeFilter || user?.collegeId || undefined);
   const assignedRoles = (user?.roles || []) as { id: string; name: string }[];
   const availableRoles = roles.filter((r: { id: string }) => !assignedRoles.some((a) => a.id === r.id));
   const rolesBusy = assigning || revoking;
@@ -293,12 +296,62 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
         <div style={cardStyle}>
           <h3 style={cardTitleStyle}><User size={16} style={{ marginRight: '8px' }} />Profile Details</h3>
           <div style={infoGrid}>
-            <InfoRow label="Reg Number" value={user.registrationNumber || 'N/A'} />
+            <InfoRow label="Reg / Staff No." value={user.registrationNumber || 'N/A'} />
             <InfoRow label="College" value={user.college?.name || 'N/A'} />
+            <InfoRow label="Department" value={user.department?.name || 'N/A'} />
             <InfoRow label="Programme" value={user.programme?.name || 'N/A'} />
             <InfoRow label="Year of Study" value={user.yearOfStudy ? `Year ${user.yearOfStudy}` : 'N/A'} />
             <InfoRow label="Phone" value={user.phoneNumber || 'N/A'} />
             <InfoRow label="Joined" value={new Date(user.createdAt).toLocaleDateString()} />
+          </div>
+
+          {/* Assign department for lecturers / staff */}
+          <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+            <label style={labelStyle}>Assign department (lecturer / staff)</label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
+              <select
+                style={selectStyle}
+                value={deptCollegeFilter || user.collegeId || ''}
+                onChange={(e) => {
+                  setDeptCollegeFilter(e.target.value);
+                  setEditDepartmentId('');
+                }}
+              >
+                <option value="">— Filter by college —</option>
+                {colleges.map((c: { id: string; name: string; shortName?: string }) => (
+                  <option key={c.id} value={c.id}>{c.shortName || c.name}</option>
+                ))}
+              </select>
+              <select
+                style={selectStyle}
+                value={editDepartmentId || user.departmentId || ''}
+                onChange={(e) => setEditDepartmentId(e.target.value)}
+              >
+                <option value="">— Select department —</option>
+                {(departmentsData?.data || []).map((d: { id: string; name: string; shortName?: string }) => (
+                  <option key={d.id} value={d.id}>{d.shortName ? `${d.shortName} — ${d.name}` : d.name}</option>
+                ))}
+              </select>
+              <button
+                type="button"
+                disabled={isPending || !(editDepartmentId || user.departmentId)}
+                onClick={() => {
+                  const next = editDepartmentId || user.departmentId;
+                  if (!next) return toast.error('Pick a department');
+                  updateUser(
+                    { id, data: { departmentId: next, collegeId: deptCollegeFilter || user.collegeId || undefined } },
+                    {
+                      onSuccess: () => toast.success('Department saved'),
+                      onError: (err: any) => toast.error(err.message || 'Failed to save department'),
+                    },
+                  );
+                }}
+                style={secondaryBtnStyle}
+              >
+                {isPending ? <Loader2 size={14} /> : <Save size={14} />}
+                Save department
+              </button>
+            </div>
           </div>
         </div>
 
@@ -430,3 +483,17 @@ const infoGrid: React.CSSProperties = { display: 'grid', gridTemplateColumns: '1
 const labelStyle: React.CSSProperties = { fontSize: '14px', fontWeight: 500, color: 'var(--text)' };
 const selectStyle: React.CSSProperties = { padding: '10px 12px', backgroundColor: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'var(--text)', fontSize: '14px', outline: 'none', width: '100%', marginTop: '6px', cursor: 'pointer' };
 const primaryBtnStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px 16px', backgroundColor: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 'var(--radius)', fontWeight: 600, cursor: 'pointer', width: '100%', fontSize: '14px' };
+const secondaryBtnStyle: React.CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 6,
+  padding: '8px 14px',
+  backgroundColor: 'var(--surface-2)',
+  color: 'var(--text)',
+  border: '1px solid var(--border)',
+  borderRadius: 'var(--radius)',
+  fontWeight: 600,
+  cursor: 'pointer',
+  fontSize: '13px',
+};

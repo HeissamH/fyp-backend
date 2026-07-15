@@ -127,6 +127,7 @@ export const POST = withPermission(async (req: NextRequest, ctx) => {
         registrationNumber: data.registrationNumber || `N/A-${Date.now()}`,
         sex: data.sex || "FEMALE",
         collegeId: data.collegeId,
+        departmentId: data.departmentId,
         programmeId: data.programmeId,
         yearOfStudy: data.yearOfStudy,
         isActive: true,

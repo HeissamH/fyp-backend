@@ -52,7 +52,15 @@ export async function getCurrentUser() {
 
 export async function updateUser(
   id: string,
-  data: { fullName?: string; isActive?: boolean; email?: string; programmeId?: string; collegeId?: string },
+  data: {
+    fullName?: string;
+    isActive?: boolean;
+    email?: string;
+    programmeId?: string | null;
+    collegeId?: string | null;
+    departmentId?: string | null;
+    yearOfStudy?: number | null;
+  },
 ) {
   const res = await fetch(`${BASE_URL}/users/${id}`, {
     method: 'PUT',
@@ -108,6 +116,7 @@ export interface CreateUserData {
   password: string;
   roleIds?: string[];
   collegeId?: string;
+  departmentId?: string;
   programmeId?: string;
   yearOfStudy?: number;
   registrationNumber?: string;

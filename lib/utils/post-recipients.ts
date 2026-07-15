@@ -8,7 +8,7 @@ import {
   groupMemberships,
   postAudiences,
 } from "@/lib/db/schema";
-import { eq, and, isNull, type SQL } from "drizzle-orm";
+import { eq, and, isNull, or, type SQL } from "drizzle-orm";
 import { filterByPreferences } from "@/lib/utils/filter-by-preferences";
 
 type AudienceRow = typeof postAudiences.$inferSelect;
@@ -89,20 +89,25 @@ async function usersForAudienceRow(row: AudienceRow): Promise<string[]> {
       return getUserIdsInCollege(row.collegeId);
     }
 
-    case "DEPARTMENT":
+    case "DEPARTMENT": {
       if (!row.departmentId) return [];
+      // Students via programme→department OR staff with users.department_id
       return db
         .select({ id: users.id })
         .from(users)
-        .innerJoin(programmes, eq(users.programmeId, programmes.id))
+        .leftJoin(programmes, eq(users.programmeId, programmes.id))
         .where(
           and(
-            eq(programmes.departmentId, row.departmentId),
+            or(
+              eq(users.departmentId, row.departmentId),
+              eq(programmes.departmentId, row.departmentId),
+            ),
             eq(users.isActive, true),
             isNull(users.deletedAt),
           ),
         )
         .then((rows) => rows.map((r) => r.id));
+    }
 
     case "PROGRAMME":
       if (!row.programmeId) return [];

@@ -30,6 +30,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         email: users.email,
         isActive: users.isActive,
         collegeId: users.collegeId,
+        departmentId: users.departmentId,
         programmeId: users.programmeId,
         yearOfStudy: users.yearOfStudy,
         currentSemester: users.currentSemester,
@@ -51,8 +52,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
     const primary = roleRows[0];
 
-    // Resolve programme name
+    // Resolve programme / department / college labels
     let programmeInfo: { id: string; name: string; code: string } | null = null;
+    let departmentInfo: { id: string; name: string; shortName: string } | null = null;
     let collegeInfo: { id: string; name: string; shortName: string } | null = null;
 
     if (dbUser.programmeId) {
@@ -61,6 +63,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         progId: programmes.id,
         progName: programmes.name,
         progCode: programmes.code,
+        deptId: departments.id,
+        deptName: departments.name,
+        deptShortName: departments.shortName,
         collegeId: departments.collegeId,
         collegeName: colleges.name,
         collegeShortName: colleges.shortName,
@@ -73,11 +78,39 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
       if (prog) {
         programmeInfo = { id: prog.progId, name: prog.progName, code: prog.progCode };
+        departmentInfo = { id: prog.deptId, name: prog.deptName, shortName: prog.deptShortName };
         collegeInfo = { id: prog.collegeId, name: prog.collegeName, shortName: prog.collegeShortName };
       }
     }
 
-    // If user has a direct collegeId but no programme, fetch college directly
+    // Direct department assignment (lecturers / dept staff)
+    if (dbUser.departmentId) {
+      const [dept] = await db
+        .select({
+          id: departments.id,
+          name: departments.name,
+          shortName: departments.shortName,
+          collegeId: departments.collegeId,
+          collegeName: colleges.name,
+          collegeShortName: colleges.shortName,
+        })
+        .from(departments)
+        .innerJoin(colleges, eq(departments.collegeId, colleges.id))
+        .where(eq(departments.id, dbUser.departmentId))
+        .limit(1);
+      if (dept) {
+        departmentInfo = { id: dept.id, name: dept.name, shortName: dept.shortName };
+        if (!collegeInfo) {
+          collegeInfo = {
+            id: dept.collegeId,
+            name: dept.collegeName,
+            shortName: dept.collegeShortName,
+          };
+        }
+      }
+    }
+
+    // If user has a direct collegeId but no programme/department college, fetch college
     if (!collegeInfo && dbUser.collegeId) {
       const [col] = await db.select({ id: colleges.id, name: colleges.name, shortName: colleges.shortName })
         .from(colleges).where(eq(colleges.id, dbUser.collegeId)).limit(1);
@@ -96,6 +129,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       roleName: primary?.name ?? null,
       collegeId: collegeInfo?.id || dbUser.collegeId,
       college: collegeInfo,
+      departmentId: departmentInfo?.id || dbUser.departmentId,
+      department: departmentInfo,
       programmeId: dbUser.programmeId,
       programme: programmeInfo,
       yearOfStudy: dbUser.yearOfStudy,

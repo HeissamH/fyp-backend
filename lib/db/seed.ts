@@ -271,6 +271,9 @@ async function main() {
     "event.delete",
     "story.create",
     "story.delete",
+    "post.create",
+    "post.update",
+    "post.delete",
   ] as const;
 
   const crPerms = ["user.read", "college.read", "post.create", "announcement.create"] as const;

@@ -54,12 +54,32 @@ export function isClassRepresentative(roleNames: string[]): boolean {
   });
 }
 
+/**
+ * Lecturers / department staff — posts should stay within their department.
+ * Excludes elevated admins (checked separately).
+ */
+export function isDepartmentScopedStaff(roleNames: string[]): boolean {
+  return roleNames.some((n) => {
+    const x = normalizeRoleName(n);
+    if (x === "admin" || x === "super admin") return false;
+    return (
+      x === "lecturer" ||
+      x.includes("lecturer") ||
+      x === "staff" ||
+      x.includes("department staff") ||
+      x.includes("dept staff")
+    );
+  });
+}
+
 export async function getUserPostProfile(userId: string): Promise<UserPostProfile | null> {
+  // Alias: department from programme vs direct staff department assignment
   const [row] = await db
     .select({
       collegeId: users.collegeId,
+      userDepartmentId: users.departmentId,
       programmeId: users.programmeId,
-      departmentId: programmes.departmentId,
+      programmeDepartmentId: programmes.departmentId,
       programmeCollegeId: departments.collegeId,
       yearOfStudy: users.yearOfStudy,
     })
@@ -80,15 +100,26 @@ export async function getUserPostProfile(userId: string): Promise<UserPostProfil
   // If a user has a role mapped to a college, we extract it.
   const roleCollegeId = rolesForUser.find((r) => r.collegeId !== null)?.collegeId ?? null;
 
-  // Most students only have programme_id set; college is via programme → department.
-  const collegeId = row.collegeId ?? row.programmeCollegeId ?? null;
+  // Direct department (staff) or via programme (students)
+  const departmentId = row.userDepartmentId ?? row.programmeDepartmentId ?? null;
+
+  // College: direct, role, programme→dept college, or staff department's college
+  let collegeId = row.collegeId ?? row.programmeCollegeId ?? roleCollegeId ?? null;
+  if (!collegeId && row.userDepartmentId) {
+    const [dept] = await db
+      .select({ collegeId: departments.collegeId })
+      .from(departments)
+      .where(eq(departments.id, row.userDepartmentId))
+      .limit(1);
+    collegeId = dept?.collegeId ?? null;
+  }
 
   return {
     roleNames: rolesForUser.map((r) => r.name),
     collegeId,
     roleCollegeId,
     programmeId: row.programmeId ?? null,
-    departmentId: row.departmentId ?? null,
+    departmentId,
     yearOfStudy: row.yearOfStudy ?? null,
   };
 }

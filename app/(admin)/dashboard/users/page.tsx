@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useUsers, useUpdateUser, useCreateUser, useDeleteUser } from './query';
 import { useRoles } from '@/app/(admin)/dashboard/roles/query';
-import { useColleges, useProgrammes } from '@/app/(admin)/dashboard/platform/query';
+import { useColleges, useDepartments, useProgrammes } from '@/app/(admin)/dashboard/platform/query';
 import { DataTable } from '@/components/admin/ui/DataTable';
 import { DataTableSkeleton } from '@/components/admin/ui/DataTableSkeleton';
 import { usersColumns } from '@/components/admin/users/UsersColumns';
@@ -19,12 +19,14 @@ function AddUserModal({ onClose }: { onClose: () => void }) {
   const [registrationNumber, setRegistrationNumber] = useState('');
   const [roleIds, setRoleIds] = useState<string[]>([]);
   const [collegeId, setCollegeId] = useState('');
+  const [departmentId, setDepartmentId] = useState('');
   const [programmeId, setProgrammeId] = useState('');
   const [yearOfStudy, setYearOfStudy] = useState('');
 
   const { mutate: createUser, isPending } = useCreateUser();
   const { data: rolesData } = useRoles();
   const { data: collegesData } = useColleges();
+  const { data: departmentsData } = useDepartments(collegeId || undefined);
   const { data: programmesData } = useProgrammes();
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -38,6 +40,7 @@ function AddUserModal({ onClose }: { onClose: () => void }) {
         registrationNumber: registrationNumber || undefined,
         roleIds: roleIds.length > 0 ? roleIds : undefined,
         collegeId: collegeId || undefined,
+        departmentId: departmentId || undefined,
         programmeId: programmeId || undefined,
         yearOfStudy: yearOfStudy ? Number(yearOfStudy) : undefined,
       },
@@ -144,27 +147,54 @@ function AddUserModal({ onClose }: { onClose: () => void }) {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
             <div style={fGroup}>
               <label style={lStyle}>College</label>
-              <select style={sStyle} value={collegeId} onChange={e => setCollegeId(e.target.value)}>
+              <select
+                style={sStyle}
+                value={collegeId}
+                onChange={(e) => {
+                  setCollegeId(e.target.value);
+                  setDepartmentId('');
+                }}
+              >
                 <option value="">— Select College —</option>
-                {collegesData?.data?.map((c: any) => <option key={c.id} value={c.id}>{c.shortName}</option>)}
+                {collegesData?.data?.map((c: any) => <option key={c.id} value={c.id}>{c.shortName || c.name}</option>)}
               </select>
             </div>
             <div style={fGroup}>
-              <label style={lStyle}>Programme</label>
-              <select style={sStyle} value={programmeId} onChange={e => setProgrammeId(e.target.value)}>
-                <option value="">— Select Programme —</option>
-                {programmesData?.data?.map((p: any) => <option key={p.id} value={p.id}>{p.shortName}</option>)}
+              <label style={lStyle}>Department (lecturers / staff)</label>
+              <select
+                style={sStyle}
+                value={departmentId}
+                onChange={(e) => setDepartmentId(e.target.value)}
+                disabled={!collegeId}
+              >
+                <option value="">{collegeId ? '— Select Department —' : '— Pick college first —'}</option>
+                {departmentsData?.data?.map((d: any) => (
+                  <option key={d.id} value={d.id}>{d.shortName || d.name}</option>
+                ))}
               </select>
             </div>
           </div>
 
-          <div style={fGroup}>
-            <label style={lStyle}>Year of Study</label>
-            <select style={sStyle} value={yearOfStudy} onChange={e => setYearOfStudy(e.target.value)}>
-              <option value="">— Not Applicable —</option>
-              {[1, 2, 3, 4, 5, 6].map(y => <option key={y} value={y}>Year {y}</option>)}
-            </select>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+            <div style={fGroup}>
+              <label style={lStyle}>Programme (students)</label>
+              <select style={sStyle} value={programmeId} onChange={e => setProgrammeId(e.target.value)}>
+                <option value="">— Select Programme —</option>
+                {programmesData?.data?.map((p: any) => <option key={p.id} value={p.id}>{p.shortName || p.code || p.name}</option>)}
+              </select>
+            </div>
+            <div style={fGroup}>
+              <label style={lStyle}>Year of Study</label>
+              <select style={sStyle} value={yearOfStudy} onChange={e => setYearOfStudy(e.target.value)}>
+                <option value="">— Not Applicable —</option>
+                {[1, 2, 3, 4, 5, 6].map(y => <option key={y} value={y}>Year {y}</option>)}
+              </select>
+            </div>
           </div>
+          <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)' }}>
+            Tip: for lecturers/staff pick role <strong>lecturer</strong> or <strong>staff</strong> and a department.
+            Their posts will only target that department.
+          </p>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', paddingTop: '8px' }}>
             <button type="button" onClick={onClose} style={cancelBtnStyle}>Cancel</button>

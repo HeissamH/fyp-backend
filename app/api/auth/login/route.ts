@@ -81,11 +81,11 @@ export async function POST(req: NextRequest) {
       return errorResponse("Invalid credentials", 401);
     }
 
-    // New self-registered students must verify webmail before login.
+    // New self-registered users must verify email before login.
     // Grandfathered users have emailVerifiedAt set from migration.
     if (!user.emailVerifiedAt) {
       return errorResponse(
-        "Verify your UDSM webmail before logging in. Check your inbox for the code, or resend it from the verification screen.",
+        "Verify your email before logging in. Check your inbox for the code, or resend it from the verification screen.",
         403,
         {
           code: "EMAIL_NOT_VERIFIED",

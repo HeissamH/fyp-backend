@@ -148,8 +148,8 @@ export async function POST(req: NextRequest) {
         otpDeliveryError: otpSent ? undefined : otpDeliveryError,
       },
       otpSent
-        ? "Account created. Open https://studentmail.udsm.ac.tz/ for the verification code."
-        : `Account created, but the verification email could not be delivered. ${otpDeliveryError || "Log in once at https://studentmail.udsm.ac.tz/ to activate your mailbox, then tap Resend code."}`,
+        ? "Account created. Check your email inbox for the verification code."
+        : `Account created, but the verification email could not be delivered. ${otpDeliveryError || "Check the address and tap Resend code, or try a Gmail/Yahoo address."}`,
       201,
     );
   } catch (error) {

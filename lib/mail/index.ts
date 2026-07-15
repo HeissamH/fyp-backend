@@ -71,15 +71,13 @@ function deliveryMessage(event: string, to: string): string {
   if (event === "suppressed") {
     return (
       `Email to ${to} is blocked by our mail provider (previous bounce). ` +
-      `Log in once at https://studentmail.udsm.ac.tz/ to activate the mailbox, ` +
-      `then ask an admin to clear the suppression and use Resend code.`
+      `Use a different email address, or ask an admin to clear the suppression and resend.`
     );
   }
   if (event === "bounced") {
     return (
-      `UDSM student mail rejected the message to ${to}. ` +
-      `Open https://studentmail.udsm.ac.tz/ and log in once to activate your mailbox, ` +
-      `confirm the address is exact, then tap Resend code.`
+      `Could not deliver to ${to} (bounced). ` +
+      `Check the address is correct, try another email (e.g. Gmail), then tap Resend code.`
     );
   }
   return `Could not deliver email to ${to} (${event}).`;
@@ -138,7 +136,7 @@ export async function sendOtpEmail(
   const minutes = process.env.OTP_EXPIRY_MINUTES || "10";
 
   if (purpose === "email_verification") {
-    const subject = "UDSM Connect - Verify your student email";
+    const subject = "UDSM Connect - Verify your email";
     const text = [
       "Verify your UDSM Connect account",
       "",
@@ -151,14 +149,10 @@ export async function sendOtpEmail(
     const html = `
       <div style="font-family: sans-serif; padding: 20px; max-width: 480px;">
         <h2 style="color:#1565C0;">Verify your UDSM Connect account</h2>
-        <p>Enter this code in the UDSM Connect app to confirm you own this student mail address.</p>
+        <p>Enter this code in the UDSM Connect app to confirm your email address:</p>
         <p style="font-size:28px;letter-spacing:6px;font-weight:700;">${otpCode}</p>
         <p>This code expires in <strong>${minutes} minutes</strong>.</p>
-        <p style="color:#666;font-size:13px;">
-          You can read this message at
-          <a href="https://studentmail.udsm.ac.tz/">https://studentmail.udsm.ac.tz/</a>.
-          If you did not create an account, ignore this email.
-        </p>
+        <p style="color:#666;font-size:13px;">If you did not create an account, ignore this email.</p>
       </div>
     `;
     return await sendEmail({ to, subject, html, text });

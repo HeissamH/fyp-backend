@@ -5,7 +5,73 @@ import { CommentNode, CommentTargetType } from '@/app/(admin)/actions/comments';
 import { usePostComment, useEditComment, useDeleteComment } from './query';
 import { MessageSquare, Reply, Pencil, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 
-// ─── Single comment node (renders itself + its children recursively) ──────────
+// Theme-aware tokens (work in light + dark via globals.css variables)
+const s = {
+  bubble: {
+    background: 'var(--surface-2)',
+    border: '1px solid var(--border)',
+    borderRadius: 12,
+    padding: 16,
+  } as React.CSSProperties,
+  name: { fontSize: 14, fontWeight: 600, color: 'var(--text)' } as React.CSSProperties,
+  muted: { fontSize: 12, color: 'var(--text-muted)' } as React.CSSProperties,
+  body: { fontSize: 14, color: 'var(--text)', marginTop: 4, whiteSpace: 'pre-wrap' as const },
+  textarea: {
+    width: '100%',
+    background: 'var(--bg)',
+    border: '1px solid var(--border)',
+    borderRadius: 10,
+    padding: '10px 12px',
+    fontSize: 14,
+    color: 'var(--text)',
+    resize: 'none' as const,
+    outline: 'none',
+    fontFamily: 'inherit',
+  } as React.CSSProperties,
+  btnPrimary: {
+    padding: '6px 12px',
+    fontSize: 12,
+    background: 'var(--primary)',
+    color: '#fff',
+    border: 'none',
+    borderRadius: 8,
+    cursor: 'pointer',
+    fontWeight: 600,
+  } as React.CSSProperties,
+  btnGhost: {
+    padding: '6px 12px',
+    fontSize: 12,
+    background: 'var(--surface-2)',
+    color: 'var(--text)',
+    border: '1px solid var(--border)',
+    borderRadius: 8,
+    cursor: 'pointer',
+  } as React.CSSProperties,
+  linkBtn: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 4,
+    fontSize: 12,
+    color: 'var(--text-muted)',
+    background: 'transparent',
+    border: 'none',
+    cursor: 'pointer',
+  } as React.CSSProperties,
+  avatar: {
+    width: 28,
+    height: 28,
+    borderRadius: '50%',
+    background: 'var(--primary)',
+    color: '#fff',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: 12,
+    fontWeight: 700,
+  } as React.CSSProperties,
+};
+
+// ─── Single comment node ─────────────────────────────────────────────────────
 function CommentItem({
   comment,
   depth,
@@ -31,66 +97,66 @@ function CommentItem({
 
   const isOwner = currentUserId === comment.authorId;
   const hasReplies = comment.children.length > 0;
-  const maxDepth = 5; // visual indent cap
+  const maxDepth = 5;
+  const indent = Math.min(depth, maxDepth) * 20;
 
   function handleReply() {
     if (!replyContent.trim()) return;
-    post({ content: replyContent.trim(), parentId: comment.id }, {
-      onSuccess: () => { setReplyContent(''); setReplying(false); }
-    });
+    post(
+      { content: replyContent.trim(), parentId: comment.id },
+      { onSuccess: () => { setReplyContent(''); setReplying(false); } },
+    );
   }
 
   function handleEdit() {
     if (!editContent.trim()) return;
-    edit({ id: comment.id, content: editContent.trim() }, {
-      onSuccess: () => setEditing(false)
-    });
+    edit(
+      { id: comment.id, content: editContent.trim() },
+      { onSuccess: () => setEditing(false) },
+    );
   }
 
-  const indent = Math.min(depth, maxDepth) * 20;
-
   return (
-    <div style={{ marginLeft: `${indent}px` }} className="mt-3">
-      {/* Thread line for replies */}
-      <div className={`relative ${depth > 0 ? 'pl-4 border-l-2 border-zinc-700' : ''}`}>
-
-        {/* Comment bubble */}
-        <div className="bg-zinc-800 rounded-xl p-4">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center text-xs font-bold text-white">
+    <div style={{ marginLeft: indent, marginTop: 12 }}>
+      <div
+        style={
+          depth > 0
+            ? { paddingLeft: 16, borderLeft: '2px solid var(--border)' }
+            : undefined
+        }
+      >
+        <div style={s.bubble}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={s.avatar}>
                 {comment.authorName?.[0]?.toUpperCase() ?? '?'}
               </div>
-              <span className="text-sm font-semibold text-zinc-100">{comment.authorName?.split('@')[0].trim() ?? 'Unknown'}</span>
-              <span className="text-xs text-zinc-500">
+              <span style={s.name}>
+                {comment.authorName?.split('@')[0].trim() ?? 'Unknown'}
+              </span>
+              <span style={s.muted}>
                 {new Date(comment.createdAt).toLocaleString()}
               </span>
               {comment.updatedAt !== comment.createdAt && (
-                <span className="text-xs text-zinc-600 italic">(edited)</span>
+                <span style={{ ...s.muted, fontStyle: 'italic' }}>(edited)</span>
               )}
             </div>
 
-            {/* Actions */}
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setReplying(r => !r)}
-                className="flex items-center gap-1 text-xs text-zinc-400 hover:text-blue-400 transition-colors"
-                title="Reply"
-              >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <button type="button" onClick={() => setReplying((r) => !r)} style={s.linkBtn} title="Reply">
                 <Reply size={13} /> Reply
               </button>
               {isOwner && (
                 <>
-                  <button
-                    onClick={() => setEditing(e => !e)}
-                    className="text-zinc-400 hover:text-yellow-400 transition-colors"
-                    title="Edit"
-                  >
+                  <button type="button" onClick={() => setEditing((e) => !e)} style={s.linkBtn} title="Edit">
                     <Pencil size={13} />
                   </button>
                   <button
-                    onClick={() => { if (confirm('Delete this comment?')) remove(comment.id); }}
-                    className="text-zinc-400 hover:text-red-400 transition-colors"
+                    type="button"
+                    onClick={() => {
+                      if (confirm('Delete this comment?')) remove(comment.id);
+                    }}
+                    style={{ ...s.linkBtn, color: 'var(--danger)' }}
                     title="Delete"
                   >
                     <Trash2 size={13} />
@@ -99,8 +165,9 @@ function CommentItem({
               )}
               {hasReplies && (
                 <button
-                  onClick={() => setCollapsed(c => !c)}
-                  className="text-zinc-500 hover:text-zinc-200 transition-colors"
+                  type="button"
+                  onClick={() => setCollapsed((c) => !c)}
+                  style={s.linkBtn}
                   title={collapsed ? 'Expand replies' : 'Collapse replies'}
                 >
                   {collapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
@@ -109,57 +176,55 @@ function CommentItem({
             </div>
           </div>
 
-          {/* Content or edit form */}
           {editing ? (
-            <div className="mt-1 flex flex-col gap-2">
+            <div style={{ marginTop: 4, display: 'flex', flexDirection: 'column', gap: 8 }}>
               <textarea
                 value={editContent}
-                onChange={e => setEditContent(e.target.value)}
+                onChange={(e) => setEditContent(e.target.value)}
                 rows={2}
-                className="w-full bg-zinc-700 border border-zinc-600 rounded-lg px-3 py-2 text-sm text-white resize-none focus:outline-none focus:ring-1 focus:ring-blue-500"
+                style={s.textarea}
               />
-              <div className="flex gap-2">
-                <button
-                  onClick={handleEdit}
-                  disabled={saving}
-                  className="px-3 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-50"
-                >
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button type="button" onClick={handleEdit} disabled={saving} style={s.btnPrimary}>
                   {saving ? 'Saving…' : 'Save'}
                 </button>
                 <button
-                  onClick={() => { setEditing(false); setEditContent(comment.content); }}
-                  className="px-3 py-1 text-xs bg-zinc-600 hover:bg-zinc-500 text-white rounded-lg"
+                  type="button"
+                  onClick={() => {
+                    setEditing(false);
+                    setEditContent(comment.content);
+                  }}
+                  style={s.btnGhost}
                 >
                   Cancel
                 </button>
               </div>
             </div>
           ) : (
-            <p className="text-sm text-zinc-300 mt-1 whitespace-pre-wrap">{comment.content}</p>
+            <p style={s.body}>{comment.content}</p>
           )}
         </div>
 
-        {/* Inline reply box */}
-         {replying && (
-          <div className="mt-2 ml-4 flex flex-col gap-2">
+        {replying && (
+          <div style={{ marginTop: 8, marginLeft: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
             <textarea
               placeholder={`Replying to ${comment.authorName?.split('@')[0].trim()}…`}
               value={replyContent}
-              onChange={e => setReplyContent(e.target.value)}
+              onChange={(e) => setReplyContent(e.target.value)}
               rows={2}
-              className="w-full bg-zinc-800 border border-zinc-600 rounded-lg px-3 py-2 text-sm text-white resize-none focus:outline-none focus:ring-1 focus:ring-blue-500"
+              style={s.textarea}
             />
-            <div className="flex gap-2">
-              <button
-                onClick={handleReply}
-                disabled={posting}
-                className="px-3 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-50"
-              >
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button type="button" onClick={handleReply} disabled={posting} style={s.btnPrimary}>
                 {posting ? 'Posting…' : 'Post Reply'}
               </button>
               <button
-                onClick={() => { setReplying(false); setReplyContent(''); }}
-                className="px-3 py-1 text-xs bg-zinc-700 hover:bg-zinc-600 text-white rounded-lg"
+                type="button"
+                onClick={() => {
+                  setReplying(false);
+                  setReplyContent('');
+                }}
+                style={s.btnGhost}
               >
                 Cancel
               </button>
@@ -167,10 +232,9 @@ function CommentItem({
           </div>
         )}
 
-        {/* Recursive children */}
         {!collapsed && hasReplies && (
-          <div className="mt-1">
-            {comment.children.map(child => (
+          <div style={{ marginTop: 4 }}>
+            {comment.children.map((child) => (
               <CommentItem
                 key={child.id}
                 comment={child}
@@ -187,7 +251,7 @@ function CommentItem({
   );
 }
 
-// ─── Top-level: the full thread panel ────────────────────────────────────────
+// ─── Thread root ─────────────────────────────────────────────────────────────
 export function CommentThread({
   targetId,
   targetType,
@@ -206,52 +270,50 @@ export function CommentThread({
 
   function handlePost() {
     if (!newComment.trim()) return;
-    post({ content: newComment.trim() }, {
-      onSuccess: () => setNewComment(''),
-    });
+    post(
+      { content: newComment.trim() },
+      { onSuccess: () => setNewComment('') },
+    );
   }
 
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center gap-2 text-zinc-300">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text)' }}>
         <MessageSquare size={16} />
-        <h3 className="text-sm font-semibold uppercase tracking-wide">
+        <h3 style={{ margin: 0, fontSize: 13, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
           Comments {!isLoading && `(${comments.length})`}
         </h3>
       </div>
 
-      {/* New top-level comment */}
-      <div className="flex flex-col gap-2">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         <textarea
           placeholder="Write a comment…"
           value={newComment}
-          onChange={e => setNewComment(e.target.value)}
+          onChange={(e) => setNewComment(e.target.value)}
           rows={3}
-          className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-sm text-white resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+          style={{ ...s.textarea, borderRadius: 12, padding: '12px 16px' }}
         />
-        <div className="flex justify-end">
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
           <button
+            type="button"
             onClick={handlePost}
             disabled={posting || !newComment.trim()}
-            className="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-50 transition-colors"
+            style={{ ...s.btnPrimary, padding: '8px 16px', fontSize: 13, opacity: posting || !newComment.trim() ? 0.5 : 1 }}
           >
             {posting ? 'Posting…' : 'Post Comment'}
           </button>
         </div>
       </div>
 
-      {/* Thread */}
       {isLoading ? (
-        <div className="flex items-center gap-2 text-zinc-500 text-sm py-4">
-          <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-          Loading comments…
-        </div>
+        <p style={{ color: 'var(--text-muted)', fontSize: 14, padding: '16px 0' }}>Loading comments…</p>
       ) : comments.length === 0 ? (
-        <p className="text-zinc-500 text-sm py-4 text-center">No comments yet. Be the first!</p>
+        <p style={{ color: 'var(--text-muted)', fontSize: 14, padding: '16px 0', textAlign: 'center' }}>
+          No comments yet. Be the first!
+        </p>
       ) : (
         <div>
-          {comments.map(comment => (
+          {comments.map((comment) => (
             <CommentItem
               key={comment.id}
               comment={comment}

@@ -175,15 +175,16 @@ const overlay: React.CSSProperties = {
 };
 
 const modal: React.CSSProperties = {
-  backgroundColor: 'var(--surface, #1e1e24)',
-  border: '1px solid rgba(255, 255, 255, 0.1)',
+  backgroundColor: 'var(--surface)',
+  border: '1px solid var(--border)',
   borderRadius: '16px',
   padding: '24px',
   width: '100%', maxWidth: '640px',
-  boxShadow: '0 24px 48px rgba(0,0,0,0.6)',
+  boxShadow: 'var(--shadow-lg)',
   maxHeight: '90vh',
   overflowY: 'auto',
   display: 'flex', flexDirection: 'column', gap: '20px',
+  color: 'var(--text)',
 };
 
 const headerWrapper: React.CSSProperties = {
@@ -195,7 +196,7 @@ const titleRow: React.CSSProperties = {
 };
 
 const titleStyle: React.CSSProperties = {
-  fontSize: '20px', fontWeight: 700, color: '#f1f1f1', margin: 0, lineHeight: 1.3,
+  fontSize: '20px', fontWeight: 700, color: 'var(--text)', margin: 0, lineHeight: 1.3,
 };
 
 const badgeStyle: React.CSSProperties = {
@@ -212,17 +213,17 @@ const closeBtn: React.CSSProperties = {
   background: 'transparent', border: 'none',
   width: '32px', height: '32px', borderRadius: '50%',
   display: 'flex', alignItems: 'center', justifyContent: 'center',
-  cursor: 'pointer', color: '#8b949e', flexShrink: 0, transition: 'background 0.2s'
+  cursor: 'pointer', color: 'var(--text-muted)', flexShrink: 0, transition: 'background 0.2s'
 };
 
 const metaRow: React.CSSProperties = {
   display: 'flex', flexWrap: 'wrap', gap: '12px',
-  paddingBottom: '20px', borderBottom: '1px solid rgba(255,255,255,0.08)',
+  paddingBottom: '20px', borderBottom: '1px solid var(--border)',
 };
 
 const metaChip: React.CSSProperties = {
   display: 'inline-flex', alignItems: 'center', gap: '6px',
-  fontSize: '13px', color: '#a1aab5',
+  fontSize: '13px', color: 'var(--text-muted)',
   fontWeight: 500,
 };
 
@@ -231,39 +232,39 @@ const messageContainer: React.CSSProperties = {
 };
 
 const sectionLabel: React.CSSProperties = {
-  fontSize: '14px', fontWeight: 600, color: '#e6edf3', margin: 0,
+  fontSize: '14px', fontWeight: 600, color: 'var(--text)', margin: 0,
 };
 
 const messageBox: React.CSSProperties = {
-  backgroundColor: 'rgba(255, 255, 255, 0.03)',
-  border: '1px solid rgba(255,255,255,0.08)',
+  backgroundColor: 'var(--surface-2)',
+  border: '1px solid var(--border)',
   borderRadius: '12px', padding: '16px',
-  fontSize: '15px', color: '#c9d1d9', lineHeight: 1.6, whiteSpace: 'pre-wrap',
+  fontSize: '15px', color: 'var(--text)', lineHeight: 1.6, whiteSpace: 'pre-wrap',
 };
 
 const notesContainer: React.CSSProperties = {
   display: 'flex', flexDirection: 'column', gap: '8px',
-  backgroundColor: 'rgba(88, 166, 255, 0.03)',
-  border: '1px solid rgba(88, 166, 255, 0.1)',
+  backgroundColor: 'var(--info-soft)',
+  border: '1px solid var(--border)',
   borderRadius: '12px', padding: '16px'
 };
 
 const existingNoteBox: React.CSSProperties = {
-  borderLeft: '3px solid #58a6ff',
+  borderLeft: '3px solid var(--info)',
   paddingLeft: '12px', marginBottom: '12px',
-  color: '#c9d1d9', fontSize: '14px',
+  color: 'var(--text)', fontSize: '14px',
 };
 
 const existingNoteLabel: React.CSSProperties = {
-  fontSize: '12px', fontWeight: 600, color: '#58a6ff', margin: '0 0 4px 0', textTransform: 'uppercase'
+  fontSize: '12px', fontWeight: 600, color: 'var(--info)', margin: '0 0 4px 0', textTransform: 'uppercase'
 };
 
 const textareaStyle: React.CSSProperties = {
   width: '100%', boxSizing: 'border-box',
-  backgroundColor: 'rgba(0,0,0,0.2)',
-  border: '1px solid rgba(255,255,255,0.1)',
+  backgroundColor: 'var(--bg)',
+  border: '1px solid var(--border)',
   borderRadius: '8px', padding: '12px 14px',
-  fontSize: '14px', color: '#e6edf3', resize: 'vertical', 
+  fontSize: '14px', color: 'var(--text)', resize: 'vertical', 
   outline: 'none', fontFamily: 'inherit',
   transition: 'border-color 0.2s', minHeight: '80px'
 };
@@ -284,7 +285,7 @@ const btnBase: React.CSSProperties = {
   transition: 'all 0.2s', border: 'none'
 };
 
-const primaryBtn = { ...btnBase, background: 'rgba(88, 166, 255, 0.15)', color: '#58a6ff', border: '1px solid rgba(88, 166, 255, 0.3)' };
+const primaryBtn = { ...btnBase, background: 'rgba(88, 166, 255, 0.15)', color: 'var(--info)', border: '1px solid rgba(88, 166, 255, 0.3)' };
 const solidBtnSuccess = { ...btnBase, background: '#238636', color: '#ffffff' };
-const ghostBtnInfo = { ...btnBase, background: 'transparent', color: '#58a6ff', border: '1px solid rgba(88,166,255,0.4)' };
+const ghostBtnInfo = { ...btnBase, background: 'transparent', color: 'var(--info)', border: '1px solid rgba(88,166,255,0.4)' };
 const ghostBtnWarning = { ...btnBase, background: 'transparent', color: '#d29922', border: '1px solid rgba(210,153,34,0.4)' };

@@ -50,38 +50,62 @@
 [data-theme='light'] {
   color-scheme: light;
 
-  --bg: #f4f6f9;
+  --bg: #f0f3f7;
   --bg-elevated: #ffffff;
   --surface: #ffffff;
-  --surface-2: #eef2f7;
-  --surface-hover: #e4eaf2;
-  --border: #d8dee8;
-  --border-subtle: #e8edf4;
+  --surface-2: #e8edf4;
+  --surface-hover: #dde5ef;
+  --border: #c9d2de;
+  --border-subtle: #e0e6ee;
   --border-focus: #0065c4;
 
-  --primary: #0065c4;
-  --primary-h: #0052a3;
-  --primary-soft: rgba(0, 101, 196, 0.1);
+  --primary: #0052a3;
+  --primary-h: #003d7a;
+  --primary-soft: rgba(0, 82, 163, 0.12);
 
-  --danger: #cf222e;
-  --danger-soft: rgba(207, 34, 46, 0.1);
-  --warning: #9a6700;
-  --warning-soft: rgba(154, 103, 0, 0.1);
-  --success: #1a7f37;
-  --success-soft: rgba(26, 127, 55, 0.1);
-  --info: #0969da;
-  --info-soft: rgba(9, 105, 218, 0.1);
+  --danger: #b42318;
+  --danger-soft: rgba(180, 35, 24, 0.1);
+  --warning: #854d0e;
+  --warning-soft: rgba(133, 77, 14, 0.12);
+  --success: #166534;
+  --success-soft: rgba(22, 101, 52, 0.12);
+  --info: #0550ae;
+  --info-soft: rgba(5, 80, 174, 0.1);
 
-  --text: #1f2328;
-  --text-muted: #656d76;
+  /* Higher contrast for readable light mode */
+  --text: #0f1419;
+  --text-muted: #4b5563;
   --text-inverse: #ffffff;
 
-  --shadow-sm: 0 1px 2px rgba(31, 35, 40, 0.06);
-  --shadow: 0 8px 28px rgba(31, 35, 40, 0.08);
-  --shadow-lg: 0 20px 50px rgba(31, 35, 40, 0.12);
+  --shadow-sm: 0 1px 2px rgba(15, 20, 25, 0.06);
+  --shadow: 0 8px 28px rgba(15, 20, 25, 0.1);
+  --shadow-lg: 0 20px 50px rgba(15, 20, 25, 0.14);
 
-  --overlay: rgba(31, 35, 40, 0.4);
-  --topbar-blur: rgba(244, 246, 249, 0.86);
+  --overlay: rgba(15, 20, 25, 0.45);
+  --topbar-blur: rgba(240, 243, 247, 0.9);
+}
+
+/* Light-mode readability for common form controls */
+[data-theme='light'] input,
+[data-theme='light'] textarea,
+[data-theme='light'] select {
+  color: var(--text);
+  background-color: var(--surface);
+  border-color: var(--border);
+}
+
+[data-theme='light'] input::placeholder,
+[data-theme='light'] textarea::placeholder {
+  color: #6b7280;
+  opacity: 1;
+}
+
+[data-theme='light'] table th {
+  color: var(--text-muted);
+}
+
+[data-theme='light'] .admin-sidebar-link.is-active {
+  color: var(--primary-h);
 }
 
 html,

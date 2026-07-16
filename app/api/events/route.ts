@@ -104,62 +104,121 @@ export const GET = withAuth(async (req) => {
 });
 
 export const POST = withPermission(async (req, ctx) => {
-  const body = await req.json();
-  const validation = createEventSchema.safeParse(body);
-  if (!validation.success) return errorResponse("Validation failed", 400, validation.error.format());
+  try {
+    const body = await req.json();
+    const validation = createEventSchema.safeParse(body);
+    if (!validation.success) {
+      const first =
+        validation.error.issues[0]?.message || "Validation failed";
+      return errorResponse(first, 400, validation.error.format());
+    }
 
-  const d = validation.data;
-  const slug = generateSlug(d.title);
+    const d = validation.data;
+    if (new Date(d.endDateTime).getTime() < new Date(d.startDateTime).getTime()) {
+      return errorResponse("End time must be after start time", 400);
+    }
 
-  const existing = await db.select({ id: events.id }).from(events).where(eq(events.slug, slug)).limit(1);
-  if (existing.length > 0) return errorResponse("An event with a similar title already exists", 409);
+    // Unique slug even when titles collide
+    let slug = generateSlug(d.title);
+    const existing = await db
+      .select({ id: events.id })
+      .from(events)
+      .where(eq(events.slug, slug))
+      .limit(1);
+    if (existing.length > 0) {
+      slug = `${slug}-${Date.now().toString(36)}`;
+    }
 
-  const isPublishing = d.status === "PUBLISHED";
+    const isPublishing = d.status === "PUBLISHED";
 
-  const [created] = await db.insert(events).values({
-    title: d.title,
-    slug,
-    description: d.description,
-    categoryId: d.categoryId,
-    status: d.status,
-    organizerId: ctx.user.userId,
-    coverImageId: d.coverImageId || null,
-    location: d.location || null,
-    locationUrl: d.locationUrl || null,
-    startDateTime: new Date(d.startDateTime),
-    endDateTime: new Date(d.endDateTime),
-    maxAttendees: d.maxAttendees ?? null,
-    academicYearId: d.academicYearId || null,
-    publishedAt: isPublishing ? new Date() : null,
-  }).returning();
+    const [created] = await db
+      .insert(events)
+      .values({
+        title: d.title,
+        slug,
+        description: d.description,
+        categoryId: d.categoryId,
+        status: d.status,
+        organizerId: ctx.user.userId,
+        coverImageId: d.coverImageId || null,
+        location: d.location || null,
+        locationUrl: d.locationUrl || null,
+        startDateTime: new Date(d.startDateTime),
+        endDateTime: new Date(d.endDateTime),
+        maxAttendees: d.maxAttendees ?? null,
+        academicYearId: d.academicYearId || null,
+        publishedAt: isPublishing ? new Date() : null,
+      })
+      .returning();
 
-  await logAction({
-    userId: ctx.user.userId,
-    action: "CREATE_EVENT",
-    entity: "EVENT",
-    entityId: created.id,
-    metadata: { title: d.title, status: d.status },
-  });
-
-  if (isPublishing) {
-    const eventId = created.id;
-    const title = d.title;
-    const authorId = ctx.user.userId;
-    after(async () => {
-      const targetUsers = await db
-        .select({ id: users.id })
-        .from(users)
-        .where(ne(users.id, authorId));
-
-      if (targetUsers.length === 0) return;
-      await notifyUsers(targetUsers.map((u) => u.id), {
-        title: "Upcoming Event",
-        body: title,
-        type: "event",
-        targetId: eventId,
-      });
+    await logAction({
+      userId: ctx.user.userId,
+      action: "CREATE_EVENT",
+      entity: "EVENT",
+      entityId: created.id,
+      metadata: { title: d.title, status: d.status },
     });
-  }
 
-  return successResponse(created, "Event created successfully", 201);
+    if (isPublishing) {
+      const eventId = created.id;
+      const title = d.title;
+      const authorId = ctx.user.userId;
+      after(async () => {
+        try {
+          const targetUsers = await db
+            .select({ id: users.id })
+            .from(users)
+            .where(ne(users.id, authorId));
+
+          if (targetUsers.length === 0) return;
+          await notifyUsers(
+            targetUsers.map((u) => u.id),
+            {
+              title: "Upcoming Event",
+              body: title,
+              type: "EVENT",
+              targetId: eventId,
+            },
+          );
+        } catch (e) {
+          console.error("Event publish notify failed:", e);
+        }
+      });
+    }
+
+    // Shape response like GET list items so the app can parse reliably
+    return successResponse(
+      {
+        id: created.id,
+        title: created.title,
+        slug: created.slug,
+        description: created.description,
+        status: created.status,
+        location: created.location,
+        locationUrl: created.locationUrl,
+        startDateTime: created.startDateTime,
+        endDateTime: created.endDateTime,
+        maxAttendees: created.maxAttendees,
+        isPinned: created.isPinned,
+        viewCount: created.viewCount,
+        publishedAt: created.publishedAt,
+        createdAt: created.createdAt,
+        goingCount: 0,
+        organizer: {
+          id: ctx.user.userId,
+          fullName: ctx.user.email || "Organizer",
+        },
+        category: null,
+        coverImage: null,
+      },
+      "Event created successfully",
+      201,
+    );
+  } catch (error: any) {
+    console.error("Create event error:", error);
+    return errorResponse(
+      error?.message || "Failed to create event",
+      500,
+    );
+  }
 }, "event.create");
